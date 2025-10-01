@@ -25,7 +25,7 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 // Store設定
 export const store = configureStore({
-  reducer: persistedReducer,
+  reducer: rootReducer, // 一時的に永続化を無効化
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
@@ -34,7 +34,7 @@ export const store = configureStore({
     }),
 });
 
-// 永続化ストア
+// 永続化ストア（一時的に無効化）
 export const persistor = persistStore(store);
 
 // 型定義

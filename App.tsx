@@ -188,13 +188,19 @@ function AppContent() {
   );
 }
 
+// ローディングコンポーネント
+const LoadingComponent = () => (
+  <View style={styles.loadingContainer}>
+    <Text style={styles.loadingText}>読み込み中...</Text>
+  </View>
+);
+
 // Redux Providerでラップしたメインコンポーネント
 export default function App() {
   return (
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <AppContent />
-      </PersistGate>
+      {/* 一時的にPersistGateを無効化 */}
+      <AppContent />
     </Provider>
   );
 }
