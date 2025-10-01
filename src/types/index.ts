@@ -1,57 +1,29 @@
-// 食事の型定義
-export interface Meal {
+// src/types/index.ts
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner';
+
+export type FamilyRole = 'parent' | 'child';
+
+export interface FamilyMember {
   id: string;
   name: string;
-  date: string; // YYYY-MM-DD形式
-  type: 'breakfast' | 'lunch' | 'dinner';
-  description?: string;
-  ingredients?: string[];
-  createdAt: string;
-  updatedAt: string;
+  role: FamilyRole;
+  isProxy: boolean; // 他の人の分を登録できるか
+  avatar?: string; // アバター画像のURL
 }
 
-// ユーザーの型定義
+export interface MealAttendance {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  mealType: MealType;
+  attendees: string[]; // FamilyMember.id[]
+  registeredBy: string; // FamilyMember.id (誰が登録したか)
+  createdAt: string; // ISO string
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'member';
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 家族メンバーの型定義
-export interface FamilyMember {
-  id: string;
-  name: string;
-  userId: string;
-  role: 'admin' | 'member';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 食事計画の型定義
-export interface MealPlan {
-  id: string;
-  date: string; // YYYY-MM-DD形式
-  meals: {
-    breakfast?: Meal;
-    lunch?: Meal;
-    dinner?: Meal;
-  };
-  createdBy: string; // User ID
-  createdAt: string;
-  updatedAt: string;
-}
-
-// アプリの状態の型定義
-export interface AppState {
-  meals: Meal[];
-  users: User[];
-  familyMembers: FamilyMember[];
-  mealPlans: MealPlan[];
-  currentUser: User | null;
-  isLoading: boolean;
-  error: string | null;
+  familyMemberId?: string; // 関連するFamilyMember.id
 }

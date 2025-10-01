@@ -13,7 +13,7 @@ import { store, persistor } from './src/store';
 
 // Screen imports
 import HomeScreen from './src/screens/Home/HomeScreen';
-import AddMealScreen from './src/screens/Home/AddMealScreen';
+import RegisterMealScreen from './src/screens/Home/RegisterMealScreen';
 
 // シンプルな画面コンポーネント
 const ScheduleScreen = () => (
@@ -38,7 +38,7 @@ function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
-      <Stack.Screen name="AddMeal" component={AddMealScreen} />
+      <Stack.Screen name="RegisterMeal" component={RegisterMealScreen} />
     </Stack.Navigator>
   );
 }
@@ -73,7 +73,7 @@ function AppContent() {
           name="Home"
           component={HomeStack}
           options={{
-            title: '食事計画',
+            title: '食事参加',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="restaurant-outline" size={size} color={color} />
             ),

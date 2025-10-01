@@ -4,12 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from '@reduxjs/toolkit';
 
 // スライスのインポート
-import mealReducer from './slices/mealSlice';
+import familyReducer from './slices/familySlice';
 import userReducer from './slices/userSlice';
 
 // ルートリデューサー
 const rootReducer = combineReducers({
-  meals: mealReducer,
+  family: familyReducer,
   users: userReducer,
 });
 
