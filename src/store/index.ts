@@ -10,14 +10,14 @@ import userReducer from './slices/userSlice';
 // ルートリデューサー
 const rootReducer = combineReducers({
   family: familyReducer,
-  users: userReducer,
+  user: userReducer,
 });
 
 // 永続化設定
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['users'], // ユーザー情報のみ永続化
+  whitelist: ['user'], // ユーザー情報のみ永続化
   // 食事データは毎回最新を取得するため永続化しない
 };
 
