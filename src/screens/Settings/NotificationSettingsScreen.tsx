@@ -14,13 +14,23 @@ interface NotificationSettingsScreenProps {
 
 const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { notificationSettings, isLoading, error } = useSelector((state: RootState) => state.users);
+  const { notificationSettings, isLoading, error } = useSelector((state: RootState) => state.user);
   
-  const [settings, setSettings] = useState<NotificationSettings>(notificationSettings);
+  const [settings, setSettings] = useState<NotificationSettings>(
+    notificationSettings || {
+      isEnabled: true,
+      breakfastTime: '07:00',
+      lunchTime: '12:00',
+      dinnerTime: '18:00',
+      includeFamilyInfo: true,
+    }
+  );
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    setSettings(notificationSettings);
+    if (notificationSettings) {
+      setSettings(notificationSettings);
+    }
   }, [notificationSettings]);
 
   const handleToggleNotification = (value: boolean) => {
