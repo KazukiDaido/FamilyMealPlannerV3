@@ -80,6 +80,13 @@ function AppContent() {
   const currentMemberId = useSelector((state: RootState) => state.family.currentMemberId);
   const isLoading = useSelector((state: RootState) => state.family.isLoading);
 
+  // デバッグログ
+  useEffect(() => {
+    console.log('=== AppContent Debug ===');
+    console.log('currentMemberId:', currentMemberId);
+    console.log('isLoading:', isLoading);
+  }, [currentMemberId, isLoading]);
+
   useEffect(() => {
     // 通知権限の要求と初期設定
     const initializeNotifications = async () => {
@@ -98,14 +105,14 @@ function AppContent() {
     initializeNotifications();
   }, []);
 
-  // ローディング中は何も表示しない
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>読み込み中...</Text>
-      </View>
-    );
-  }
+  // ローディング中は何も表示しない（一時的にコメントアウト）
+  // if (isLoading) {
+  //   return (
+  //     <View style={styles.loadingContainer}>
+  //       <Text style={styles.loadingText}>読み込み中...</Text>
+  //     </View>
+  //   );
+  // }
 
   // 認証されていない場合はログイン画面を表示
   if (!currentMemberId) {
