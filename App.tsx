@@ -78,14 +78,6 @@ function FamilyStack() {
 // メインのAppコンポーネント
 function AppContent() {
   const currentMemberId = useSelector((state: RootState) => state.family.currentMemberId);
-  const isLoading = useSelector((state: RootState) => state.family.isLoading);
-
-  // デバッグログ
-  useEffect(() => {
-    console.log('=== AppContent Debug ===');
-    console.log('currentMemberId:', currentMemberId);
-    console.log('isLoading:', isLoading);
-  }, [currentMemberId, isLoading]);
 
   useEffect(() => {
     // 通知権限の要求と初期設定
@@ -104,15 +96,6 @@ function AppContent() {
 
     initializeNotifications();
   }, []);
-
-  // ローディング中は何も表示しない（一時的にコメントアウト）
-  // if (isLoading) {
-  //   return (
-  //     <View style={styles.loadingContainer}>
-  //       <Text style={styles.loadingText}>読み込み中...</Text>
-  //     </View>
-  //   );
-  // }
 
   // 認証されていない場合はログイン画面を表示
   if (!currentMemberId) {
@@ -195,18 +178,10 @@ function AppContent() {
   );
 }
 
-// ローディングコンポーネント
-const LoadingComponent = () => (
-  <View style={styles.loadingContainer}>
-    <Text style={styles.loadingText}>読み込み中...</Text>
-  </View>
-);
-
 // Redux Providerでラップしたメインコンポーネント
 export default function App() {
   return (
     <Provider store={store}>
-      {/* 一時的にPersistGateを無効化 */}
       <AppContent />
     </Provider>
   );
@@ -230,15 +205,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F7F7F7',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7C32',
   },
 });
