@@ -16,6 +16,7 @@ import HomeScreen from './src/screens/Home/HomeScreen';
 import RegisterMealScreen from './src/screens/Home/RegisterMealScreen';
 import FamilyScreen from './src/screens/Family/FamilyScreen';
 import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
+import EditFamilyMemberScreen from './src/screens/Family/EditFamilyMemberScreen';
 
 // シンプルな画面コンポーネント
 const ScheduleScreen = () => (
@@ -51,6 +52,7 @@ function FamilyStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="FamilyMain" component={FamilyScreen} />
       <Stack.Screen name="AddFamilyMember" component={AddFamilyMemberScreen} />
+      <Stack.Screen name="EditFamilyMember" component={EditFamilyMemberScreen} />
     </Stack.Navigator>
   );
 }

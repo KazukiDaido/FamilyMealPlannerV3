@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { fetchFamilyMembers, addFamilyMember } from '../../store/slices/familySlice';
+import { fetchFamilyMembers, addFamilyMember, deleteFamilyMember } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
 
 interface FamilyScreenProps {
@@ -24,7 +24,7 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   };
 
   const handleEditMember = (member: FamilyMember) => {
-    navigation.navigate('EditFamilyMember', { member });
+    navigation.navigate('EditFamilyMember', { memberId: member.id });
   };
 
   const handleDeleteMember = (member: FamilyMember) => {
@@ -37,7 +37,7 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
           text: '削除', 
           style: 'destructive',
           onPress: () => {
-            // TODO: 削除機能を実装
+            dispatch(deleteFamilyMember(member.id));
             Alert.alert('削除', `${member.name}を削除しました。`);
           }
         }

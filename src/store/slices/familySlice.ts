@@ -107,6 +107,34 @@ export const addFamilyMember = createAsyncThunk<FamilyMember, Omit<FamilyMember,
   }
 );
 
+// 非同期アクション: 家族メンバーを更新
+export const updateFamilyMember = createAsyncThunk<FamilyMember, FamilyMember, { rejectValue: string }>(
+  'family/updateMember',
+  async (memberData, { rejectWithValue }) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // 実際にはAPIにPUTリクエストを送信
+      return memberData;
+    } catch (err) {
+      return rejectWithValue('家族メンバーの更新に失敗しました。');
+    }
+  }
+);
+
+// 非同期アクション: 家族メンバーを削除
+export const deleteFamilyMember = createAsyncThunk<string, string, { rejectValue: string }>(
+  'family/deleteMember',
+  async (memberId, { rejectWithValue }) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // 実際にはAPIにDELETEリクエストを送信
+      return memberId;
+    } catch (err) {
+      return rejectWithValue('家族メンバーの削除に失敗しました。');
+    }
+  }
+);
+
 const familySlice = createSlice({
   name: 'family',
   initialState,
@@ -148,10 +176,21 @@ const familySlice = createSlice({
         // 新しい登録を追加
         state.mealAttendances.push(action.payload);
       })
-      // addFamilyMember
-      .addCase(addFamilyMember.fulfilled, (state, action: PayloadAction<FamilyMember>) => {
-        state.members.push(action.payload);
-      });
+          // addFamilyMember
+          .addCase(addFamilyMember.fulfilled, (state, action: PayloadAction<FamilyMember>) => {
+            state.members.push(action.payload);
+          })
+          // updateFamilyMember
+          .addCase(updateFamilyMember.fulfilled, (state, action: PayloadAction<FamilyMember>) => {
+            const index = state.members.findIndex(member => member.id === action.payload.id);
+            if (index !== -1) {
+              state.members[index] = action.payload;
+            }
+          })
+          // deleteFamilyMember
+          .addCase(deleteFamilyMember.fulfilled, (state, action: PayloadAction<string>) => {
+            state.members = state.members.filter(member => member.id !== action.payload);
+          });
   },
 });
 
