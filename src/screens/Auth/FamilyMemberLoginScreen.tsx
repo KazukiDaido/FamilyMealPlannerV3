@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { loginAsMember } from '../../store/slices/familySlice';
+import { loginAsMember, fetchFamilyMembers } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
 
 interface FamilyMemberLoginScreenProps {
@@ -15,6 +15,11 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
   const dispatch = useDispatch<AppDispatch>();
   const { members, isLoading } = useSelector((state: RootState) => state.family);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  // 家族メンバーを取得
+  useEffect(() => {
+    dispatch(fetchFamilyMembers());
+  }, [dispatch]);
 
   const handleMemberSelect = (memberId: string) => {
     setSelectedMemberId(memberId);
@@ -78,7 +83,19 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
 
       <ScrollView style={styles.content}>
         <View style={styles.memberList}>
-          {members.map((member: FamilyMember) => (
+          {members.length === 0 && !isLoading ? (
+            <View style={styles.noMembersContainer}>
+              <Text style={styles.noMembersText}>家族メンバーが見つかりません</Text>
+              <Text style={styles.noMembersSubtext}>まず家族メンバーを追加してください</Text>
+              <TouchableOpacity 
+                style={styles.addMemberButton}
+                onPress={() => navigation.navigate('Family')}
+              >
+                <Text style={styles.addMemberButtonText}>家族メンバーを追加</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            members.map((member: FamilyMember) => (
             <TouchableOpacity
               key={member.id}
               style={[
@@ -108,7 +125,8 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
                 </View>
               )}
             </TouchableOpacity>
-          ))}
+          ))
+          )}
         </View>
 
         <TouchableOpacity
@@ -255,6 +273,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  noMembersContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  noMembersText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  noMembersSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  addMemberButton: {
+    backgroundColor: '#6B7C32',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  addMemberButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
