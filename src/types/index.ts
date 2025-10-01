@@ -27,3 +27,12 @@ export interface User {
   email: string;
   familyMemberId?: string; // 関連するFamilyMember.id
 }
+
+// 通知設定の型定義
+export interface NotificationSettings {
+  isEnabled: boolean;
+  breakfastTime: string; // "07:00"
+  lunchTime: string;     // "12:00"
+  dinnerTime: string;    // "18:00"
+  includeFamilyInfo: boolean;
+}

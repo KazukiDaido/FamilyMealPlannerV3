@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -17,6 +17,8 @@ import RegisterMealScreen from './src/screens/Home/RegisterMealScreen';
 import FamilyScreen from './src/screens/Family/FamilyScreen';
 import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
 import EditFamilyMemberScreen from './src/screens/Family/EditFamilyMemberScreen';
+import SettingsScreen from './src/screens/Settings/SettingsScreen';
+import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
 
 // シンプルな画面コンポーネント
 const ScheduleScreen = () => (
@@ -26,12 +28,15 @@ const ScheduleScreen = () => (
   </View>
 );
 
-const SettingsScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>設定</Text>
-    <Text style={styles.subtitle}>ユーザー管理機能を追加予定</Text>
-  </View>
-);
+// Settings Stack Navigator
+function SettingsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SettingsMain" component={SettingsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+    </Stack.Navigator>
+  );
+}
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -59,6 +64,25 @@ function FamilyStack() {
 
 // メインのAppコンポーネント
 function AppContent() {
+  useEffect(() => {
+    // 通知権限の要求と初期設定
+    const initializeNotifications = async () => {
+      try {
+        const NotificationService = (await import('./src/services/notificationService')).default;
+        const hasPermission = await NotificationService.requestPermissions();
+        if (hasPermission) {
+          console.log('通知権限が許可されました');
+        } else {
+          console.log('通知権限が拒否されました');
+        }
+      } catch (error) {
+        console.error('通知の初期化に失敗:', error);
+      }
+    };
+
+    initializeNotifications();
+  }, []);
+
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -115,7 +139,7 @@ function AppContent() {
         />
         <Tab.Screen
           name="Settings"
-          component={SettingsScreen}
+          component={SettingsStack}
           options={{
             title: '設定',
             tabBarIcon: ({ color, size }) => (
