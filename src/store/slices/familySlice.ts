@@ -1,9 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { FamilyMember, MealAttendance, MealType } from '../../types';
+import { FamilyMember, MealAttendance, MealType, PersonalResponse, ResponseSettings } from '../../types';
 
 interface FamilyState {
   members: FamilyMember[];
   mealAttendances: MealAttendance[];
+  currentMemberId: string | null; // ログイン中のメンバー
+  responseSettings: ResponseSettings; // 回答設定
   isLoading: boolean;
   error: string | null;
 }
@@ -11,6 +13,11 @@ interface FamilyState {
 const initialState: FamilyState = {
   members: [],
   mealAttendances: [],
+  currentMemberId: null,
+  responseSettings: {
+    deadlineMinutes: 30,
+    defaultNoResponse: 'unanswered',
+  },
   isLoading: false,
   error: null,
 };
@@ -135,6 +142,63 @@ export const deleteFamilyMember = createAsyncThunk<string, string, { rejectValue
   }
 );
 
+// ログインアクション
+export const loginAsMember = createAsyncThunk<string, string, { rejectValue: string }>(
+  'family/loginAsMember',
+  async (memberId, { rejectWithValue }) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return memberId;
+    } catch (err) {
+      return rejectWithValue('ログインに失敗しました。');
+    }
+  }
+);
+
+// ログアウトアクション
+export const logoutMember = createAsyncThunk<void, void, { rejectValue: string }>(
+  'family/logoutMember',
+  async (_, { rejectWithValue }) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return;
+    } catch (err) {
+      return rejectWithValue('ログアウトに失敗しました。');
+    }
+  }
+);
+
+// 個人回答の送信
+export const submitPersonalResponse = createAsyncThunk<PersonalResponse, Omit<PersonalResponse, 'id' | 'respondedAt'>, { rejectValue: string }>(
+  'family/submitPersonalResponse',
+  async (responseData, { rejectWithValue }) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const newResponse: PersonalResponse = {
+        id: `pr-${Date.now()}`,
+        ...responseData,
+        respondedAt: new Date().toISOString(),
+      };
+      return newResponse;
+    } catch (err) {
+      return rejectWithValue('回答の送信に失敗しました。');
+    }
+  }
+);
+
+// 回答設定の更新
+export const updateResponseSettings = createAsyncThunk<ResponseSettings, ResponseSettings, { rejectValue: string }>(
+  'family/updateResponseSettings',
+  async (settings, { rejectWithValue }) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return settings;
+    } catch (err) {
+      return rejectWithValue('設定の更新に失敗しました。');
+    }
+  }
+);
+
 const familySlice = createSlice({
   name: 'family',
   initialState,
@@ -187,10 +251,68 @@ const familySlice = createSlice({
               state.members[index] = action.payload;
             }
           })
-          // deleteFamilyMember
-          .addCase(deleteFamilyMember.fulfilled, (state, action: PayloadAction<string>) => {
-            state.members = state.members.filter(member => member.id !== action.payload);
-          });
+      // deleteFamilyMember
+      .addCase(deleteFamilyMember.fulfilled, (state, action: PayloadAction<string>) => {
+        state.members = state.members.filter(member => member.id !== action.payload);
+      })
+      // loginAsMember
+      .addCase(loginAsMember.fulfilled, (state, action: PayloadAction<string>) => {
+        state.currentMemberId = action.payload;
+      })
+      // logoutMember
+      .addCase(logoutMember.fulfilled, (state) => {
+        state.currentMemberId = null;
+      })
+      // submitPersonalResponse
+      .addCase(submitPersonalResponse.fulfilled, (state, action: PayloadAction<PersonalResponse>) => {
+        const { date, mealType, familyMemberId, willAttend } = action.payload;
+        
+        // 該当する MealAttendance を探す
+        let attendance = state.mealAttendances.find(
+          att => att.date === date && att.mealType === mealType
+        );
+        
+        // なければ新規作成
+        if (!attendance) {
+          attendance = {
+            id: `ma-${Date.now()}`,
+            date,
+            mealType,
+            attendees: [],
+            registeredBy: familyMemberId,
+            createdAt: new Date().toISOString(),
+            responses: [],
+            isLocked: false,
+          };
+          state.mealAttendances.push(attendance);
+        }
+        
+        // responses配列を初期化（なければ）
+        if (!attendance.responses) {
+          attendance.responses = [];
+        }
+        
+        // 既存の回答を削除
+        attendance.responses = attendance.responses.filter(
+          r => r.familyMemberId !== familyMemberId
+        );
+        
+        // 新しい回答を追加
+        attendance.responses.push(action.payload);
+        
+        // attendees を更新
+        if (willAttend) {
+          if (!attendance.attendees.includes(familyMemberId)) {
+            attendance.attendees.push(familyMemberId);
+          }
+        } else {
+          attendance.attendees = attendance.attendees.filter(id => id !== familyMemberId);
+        }
+      })
+      // updateResponseSettings
+      .addCase(updateResponseSettings.fulfilled, (state, action: PayloadAction<ResponseSettings>) => {
+        state.responseSettings = action.payload;
+      });
   },
 });
 
