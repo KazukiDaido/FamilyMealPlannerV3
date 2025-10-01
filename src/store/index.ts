@@ -3,20 +3,27 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from '@reduxjs/toolkit';
 
-// 仮のスライス（後で実装）
-const dummyReducer = (state = {}, action: any) => state;
+// スライスのインポート
+import mealReducer from './slices/mealSlice';
+import userReducer from './slices/userSlice';
 
+// ルートリデューサー
+const rootReducer = combineReducers({
+  meals: mealReducer,
+  users: userReducer,
+});
+
+// 永続化設定
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
+  whitelist: ['users'], // ユーザー情報のみ永続化
+  // 食事データは毎回最新を取得するため永続化しない
 };
-
-const rootReducer = combineReducers({
-  dummy: dummyReducer,
-});
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+// Store設定
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
@@ -27,7 +34,9 @@ export const store = configureStore({
     }),
 });
 
+// 永続化ストア
 export const persistor = persistStore(store);
 
+// 型定義
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
