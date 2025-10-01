@@ -14,6 +14,8 @@ import { store, persistor } from './src/store';
 // Screen imports
 import HomeScreen from './src/screens/Home/HomeScreen';
 import RegisterMealScreen from './src/screens/Home/RegisterMealScreen';
+import FamilyScreen from './src/screens/Family/FamilyScreen';
+import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
 
 // シンプルな画面コンポーネント
 const ScheduleScreen = () => (
@@ -39,6 +41,16 @@ function HomeStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen name="RegisterMeal" component={RegisterMealScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Family Stack Navigator
+function FamilyStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="FamilyMain" component={FamilyScreen} />
+      <Stack.Screen name="AddFamilyMember" component={AddFamilyMemberScreen} />
     </Stack.Navigator>
   );
 }
@@ -76,6 +88,16 @@ function AppContent() {
             title: '食事参加',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="restaurant-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Family"
+          component={FamilyStack}
+          options={{
+            title: '家族',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="people-outline" size={size} color={color} />
             ),
           }}
         />
