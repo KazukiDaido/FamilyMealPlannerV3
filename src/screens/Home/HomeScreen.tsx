@@ -13,7 +13,7 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { members, mealAttendances, isLoading } = useSelector((state: RootState) => state.family);
+  const { members, mealAttendances, isLoading, currentMemberId } = useSelector((state: RootState) => state.family);
   const [selectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
@@ -57,6 +57,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Text style={styles.headerTitle}>今日の食事参加</Text>
         <Text style={styles.dateText}>{selectedDate}</Text>
       </View>
+
+      {/* 個人回答ボタン */}
+      {currentMemberId && (
+        <View style={styles.personalResponseSection}>
+          <TouchableOpacity 
+            style={styles.personalResponseButton}
+            onPress={() => navigation.navigate('PersonalResponse')}
+          >
+            <Ionicons name="person-outline" size={20} color="white" />
+            <Text style={styles.personalResponseButtonText}>個人回答をする</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView style={styles.content}>
         {mealTypes.map(({ type, label, icon }) => {
@@ -199,6 +212,29 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   familyButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  personalResponseSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  personalResponseButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  personalResponseButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',

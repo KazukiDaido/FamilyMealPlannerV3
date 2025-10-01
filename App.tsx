@@ -5,20 +5,23 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Provider } from 'react-redux';
+import { Provider, useSelector } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 
 // Redux Store
-import { store, persistor } from './src/store';
+import { store, persistor, RootState } from './src/store';
 
 // Screen imports
 import HomeScreen from './src/screens/Home/HomeScreen';
 import RegisterMealScreen from './src/screens/Home/RegisterMealScreen';
+import PersonalResponseScreen from './src/screens/Home/PersonalResponseScreen';
+import FamilyMemberLoginScreen from './src/screens/Auth/FamilyMemberLoginScreen';
 import FamilyScreen from './src/screens/Family/FamilyScreen';
 import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
 import EditFamilyMemberScreen from './src/screens/Family/EditFamilyMemberScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
+import NotificationService from './src/services/notificationService';
 
 // シンプルな画面コンポーネント
 const ScheduleScreen = () => (
@@ -41,12 +44,22 @@ function SettingsStack() {
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+// Auth Stack Navigator
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={FamilyMemberLoginScreen} />
+    </Stack.Navigator>
+  );
+}
+
 // Home Stack Navigator
 function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen name="RegisterMeal" component={RegisterMealScreen} />
+      <Stack.Screen name="PersonalResponse" component={PersonalResponseScreen} />
     </Stack.Navigator>
   );
 }
@@ -64,11 +77,13 @@ function FamilyStack() {
 
 // メインのAppコンポーネント
 function AppContent() {
+  const currentMemberId = useSelector((state: RootState) => state.family.currentMemberId);
+  const isLoading = useSelector((state: RootState) => state.family.isLoading);
+
   useEffect(() => {
     // 通知権限の要求と初期設定
     const initializeNotifications = async () => {
       try {
-        const NotificationService = (await import('./src/services/notificationService')).default;
         const hasPermission = await NotificationService.requestPermissions();
         if (hasPermission) {
           console.log('通知権限が許可されました');
@@ -83,6 +98,26 @@ function AppContent() {
     initializeNotifications();
   }, []);
 
+  // ローディング中は何も表示しない
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>読み込み中...</Text>
+      </View>
+    );
+  }
+
+  // 認証されていない場合はログイン画面を表示
+  if (!currentMemberId) {
+    return (
+      <NavigationContainer>
+        <AuthStack />
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    );
+  }
+
+  // 認証済みの場合はメインタブを表示
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -182,5 +217,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F7',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7C32',
   },
 });
