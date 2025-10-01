@@ -2,31 +2,49 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+
+// Redux Store
+import { store, persistor } from './src/store';
+
+// Screen imports
+import HomeScreen from './src/screens/Home/HomeScreen';
+import AddMealScreen from './src/screens/Home/AddMealScreen';
 
 // シンプルな画面コンポーネント
-const HomeScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>連絡</Text>
-  </View>
-);
-
 const ScheduleScreen = () => (
   <View style={styles.screen}>
     <Text style={styles.title}>スケジュール</Text>
+    <Text style={styles.subtitle}>食事計画機能を追加予定</Text>
   </View>
 );
 
 const SettingsScreen = () => (
   <View style={styles.screen}>
     <Text style={styles.title}>設定</Text>
+    <Text style={styles.subtitle}>ユーザー管理機能を追加予定</Text>
   </View>
 );
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-export default function App() {
+// Home Stack Navigator
+function HomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen name="AddMeal" component={AddMealScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// メインのAppコンポーネント
+function AppContent() {
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -53,11 +71,11 @@ export default function App() {
       >
         <Tab.Screen
           name="Home"
-          component={HomeScreen}
+          component={HomeStack}
           options={{
-            title: '連絡',
+            title: '食事計画',
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" size={size} color={color} />
+              <Ionicons name="restaurant-outline" size={size} color={color} />
             ),
           }}
         />
@@ -87,16 +105,34 @@ export default function App() {
   );
 }
 
+// Redux Providerでラップしたメインコンポーネント
+export default function App() {
+  return (
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <AppContent />
+      </PersistGate>
+    </Provider>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
+    padding: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
