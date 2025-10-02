@@ -21,15 +21,8 @@ import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
 import EditFamilyMemberScreen from './src/screens/Family/EditFamilyMemberScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
+import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
 import NotificationService from './src/services/notificationService';
-
-// シンプルな画面コンポーネント
-const ScheduleScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>スケジュール</Text>
-    <Text style={styles.subtitle}>食事計画機能を追加予定</Text>
-  </View>
-);
 
 // Settings Stack Navigator
 function SettingsStack() {
