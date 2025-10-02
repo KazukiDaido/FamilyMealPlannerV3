@@ -19,7 +19,7 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
 
   const [familyName, setFamilyName] = useState('');
   const [members, setMembers] = useState([
-    { name: 'あなたの名前', isProxy: true },
+    { name: '', isProxy: true },
   ]);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
@@ -120,10 +120,11 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
       
       <TextInput
         style={styles.input}
-        placeholder="名前を入力"
+        placeholder={index === 0 ? "あなたの名前を入力" : "名前を入力"}
         value={member.name}
         onChangeText={(text) => handleMemberNameChange(text, index)}
         autoCapitalize="words"
+        placeholderTextColor="#999"
       />
       
       <View style={styles.proxyContainer}>
@@ -174,7 +175,7 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
         </Text>
       </View>
 
-      <ScrollView style={styles.formContainer}>
+      <ScrollView style={styles.formContainer} contentContainerStyle={styles.scrollContent}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>家族名</Text>
           <TextInput
@@ -200,11 +201,17 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
           
           {members.map(renderMemberCard)}
         </View>
+        
+        {/* スクロール用の余白 */}
+        <View style={styles.scrollSpacer} />
+      </ScrollView>
 
+      {/* 固定フッター */}
+      <View style={styles.footer}>
         <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
           <Text style={styles.completeButtonText}>設定を完了する</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       <AddMemberModal
         visible={showAddMemberModal}
@@ -242,7 +249,26 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  scrollSpacer: {
+    height: 100, // フッターの高さ分の余白
+  },
+  footer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   section: {
     backgroundColor: '#FFFFFF',
@@ -357,9 +383,8 @@ const styles = StyleSheet.create({
   completeButton: {
     backgroundColor: '#6B7C32',
     paddingVertical: 15,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
