@@ -51,7 +51,15 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
       // Redux stateも更新
       await dispatch(loginAsMember(selectedMemberId)).unwrap();
       
-      Alert.alert('ログイン成功', `ようこそ、${selectedMember.name}さん！`);
+      Alert.alert('ログイン成功', `ようこそ、${selectedMember.name}さん！`, [
+        {
+          text: 'OK',
+          onPress: () => {
+            // ログイン成功後は自動的にメイン画面に遷移
+            // App.tsxの認証状態チェックで処理される
+          },
+        },
+      ]);
     } catch (error: any) {
       console.error('ログインエラー:', error);
       Alert.alert('ログインエラー', error.message || 'ログインに失敗しました。');

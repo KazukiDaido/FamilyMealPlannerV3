@@ -97,8 +97,9 @@ function AppContent() {
         } catch (error) {
           console.log('Firebase認証監視に失敗、オフライン動作に切り替え');
           setIsInitializing(false);
-          // オフライン動作の場合は認証済みとして扱う
-          setFirebaseUser({ uid: 'offline_user' } as User);
+          // オフライン動作の場合は認証状態をnullのままにして、
+          // ReduxのcurrentMemberIdで認証状態を管理
+          setFirebaseUser(null);
         }
 
     // 通知権限の要求と初期設定
@@ -133,15 +134,15 @@ function AppContent() {
     );
   }
 
-  // Firebase認証されていない場合はログイン画面を表示
-  if (!firebaseUser) {
-    return (
-      <NavigationContainer>
-        <AuthStack />
-        <StatusBar style="auto" />
-      </NavigationContainer>
-    );
-  }
+      // Firebase認証されていない場合、またはReduxでログインしていない場合はログイン画面を表示
+      if (!firebaseUser && !currentMemberId) {
+        return (
+          <NavigationContainer>
+            <AuthStack />
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        );
+      }
 
   // 認証済みの場合はメインタブを表示
   return (
