@@ -20,6 +20,8 @@ import FamilyMemberLoginScreen from './src/screens/Auth/FamilyMemberLoginScreen'
 import FamilyScreen from './src/screens/Family/FamilyScreen';
 import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
 import EditFamilyMemberScreen from './src/screens/Family/EditFamilyMemberScreen';
+import CreateFamilyGroupScreen from './src/screens/Family/CreateFamilyGroupScreen';
+import JoinFamilyGroupScreen from './src/screens/Family/JoinFamilyGroupScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
 import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
@@ -67,6 +69,8 @@ function FamilyStack() {
       <Stack.Screen name="FamilyMain" component={FamilyScreen} />
       <Stack.Screen name="AddFamilyMember" component={AddFamilyMemberScreen} />
       <Stack.Screen name="EditFamilyMember" component={EditFamilyMemberScreen} />
+      <Stack.Screen name="CreateFamilyGroup" component={CreateFamilyGroupScreen} />
+      <Stack.Screen name="JoinFamilyGroup" component={JoinFamilyGroupScreen} />
     </Stack.Navigator>
   );
 }

@@ -47,6 +47,31 @@ export interface User {
   familyMemberId?: string; // 関連するFamilyMember.id
 }
 
+// 家族グループの型定義
+export interface FamilyGroup {
+  id: string;
+  name: string; // 家族名（例：「田中家」）
+  familyCode: string; // 6桁の家族ID
+  createdBy: string; // 作成者のUser ID
+  createdAt: string; // ISO timestamp
+  memberCount: number; // メンバー数
+  settings: {
+    allowGuestJoin: boolean; // ゲスト参加を許可するか
+    requireApproval: boolean; // 参加承認が必要か
+  };
+}
+
+// 家族グループ参加リクエストの型定義
+export interface FamilyGroupJoinRequest {
+  id: string;
+  familyGroupId: string;
+  requesterName: string;
+  requesterId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string; // ISO timestamp
+  respondedAt?: string; // ISO timestamp
+}
+
 // 通知設定の型定義
 export interface NotificationSettings {
   isEnabled: boolean;

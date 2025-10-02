@@ -14,6 +14,7 @@ interface FamilyScreenProps {
 const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { members, isLoading, error } = useSelector((state: RootState) => state.family);
+  const { currentFamilyGroup } = useSelector((state: RootState) => state.familyGroup);
 
   useEffect(() => {
     dispatch(fetchFamilyMembers());
@@ -89,6 +90,30 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
     </View>
   );
 
+  const renderFamilyGroupActions = () => (
+    <View style={styles.familyGroupSection}>
+      <Text style={styles.sectionTitle}>家族グループ</Text>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity 
+          style={styles.actionCard}
+          onPress={() => navigation.navigate('CreateFamilyGroup')}
+        >
+          <Ionicons name="add-circle-outline" size={32} color="#6B7C32" />
+          <Text style={styles.actionTitle}>新しい家族グループを作成</Text>
+          <Text style={styles.actionDescription}>家族のためのグループを作成して、家族コードを共有しましょう</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.actionCard}
+          onPress={() => navigation.navigate('JoinFamilyGroup')}
+        >
+          <Ionicons name="people-outline" size={32} color="#007AFF" />
+          <Text style={styles.actionTitle}>既存の家族グループに参加</Text>
+          <Text style={styles.actionDescription}>家族コードを使って既存のグループに参加しましょう</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -116,20 +141,32 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>家族メンバー</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>
+            {currentFamilyGroup ? currentFamilyGroup.name : '家族メンバー'}
+          </Text>
+          {currentFamilyGroup && (
+            <Text style={styles.familyCode}>
+              家族コード: {currentFamilyGroup.familyCode}
+            </Text>
+          )}
+        </View>
         <TouchableOpacity onPress={handleAddMember} style={styles.addButton}>
           <Ionicons name="add" size={24} color="#6B7C32" />
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={members}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMemberItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
+      <ScrollView style={styles.listContainer}>
+        {!currentFamilyGroup && renderFamilyGroupActions()}
+        <FlatList
+          data={members}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMemberItem}
+          ListEmptyComponent={renderEmptyState}
+          scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -185,16 +222,63 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#333',
   },
+  familyCode: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
   addButton: {
     padding: 4,
   },
   listContainer: {
+    flex: 1,
     padding: 16,
+  },
+  familyGroupSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  actionButtons: {
+    gap: 12,
+  },
+  actionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  actionDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   memberCard: {
     backgroundColor: 'white',

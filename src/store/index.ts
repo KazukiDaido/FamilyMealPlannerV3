@@ -6,11 +6,13 @@ import { combineReducers } from '@reduxjs/toolkit';
 // スライスのインポート
 import familyReducer from './slices/familySlice';
 import userReducer from './slices/userSlice';
+import familyGroupReducer from './slices/familyGroupSlice';
 
 // ルートリデューサー
 const rootReducer = combineReducers({
   family: familyReducer,
   user: userReducer,
+  familyGroup: familyGroupReducer,
 });
 
 // 永続化設定
