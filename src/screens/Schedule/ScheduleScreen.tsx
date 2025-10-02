@@ -16,7 +16,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { mealAttendances, members, isLoading } = useSelector((state: RootState) => state.family);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('month');
 
   useEffect(() => {
     dispatch(fetchMealAttendances());
@@ -103,24 +102,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>食事スケジュール</Text>
-        <View style={styles.viewModeButtons}>
-          <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'month' && styles.activeViewModeButton]}
-            onPress={() => setViewMode('month')}
-          >
-            <Text style={[styles.viewModeButtonText, viewMode === 'month' && styles.activeViewModeButtonText]}>
-              月
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'week' && styles.activeViewModeButton]}
-            onPress={() => setViewMode('week')}
-          >
-            <Text style={[styles.viewModeButtonText, viewMode === 'week' && styles.activeViewModeButtonText]}>
-              週
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView style={styles.content}>
@@ -134,7 +115,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
             hideExtraDays={true}
             disableMonthChange={false}
             firstDay={1}
-            hideDayNames={viewMode === 'week'}
+            hideDayNames={false}
             showWeekNumbers={false}
             onPressArrowLeft={(subtractMonth) => subtractMonth()}
             onPressArrowRight={(addMonth) => addMonth()}
@@ -252,28 +233,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
-  },
-  viewModeButtons: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    padding: 2,
-  },
-  viewModeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  activeViewModeButton: {
-    backgroundColor: '#6B7C32',
-  },
-  viewModeButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  activeViewModeButtonText: {
-    color: 'white',
   },
   content: {
     flex: 1,
