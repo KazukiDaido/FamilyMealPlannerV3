@@ -21,39 +21,27 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     dispatch(fetchMealAttendances());
   }, [dispatch]);
 
-  // カレンダー用のマーキングデータを作成
+  // カレンダー用のマーキングデータを作成（シンプル版）
   const getMarkedDates = () => {
     const markedDates: any = {};
     
+    // 食事参加がある日付を薄くマーク
     mealAttendances.forEach((attendance) => {
       const date = attendance.date;
       if (!markedDates[date]) {
-        markedDates[date] = { marked: true, dots: [] };
+        markedDates[date] = { 
+          marked: true,
+          dotColor: '#E8F5E9',
+          selectedDotColor: '#6B7C32'
+        };
       }
-      
-      // 食事タイプに応じて色分け
-      const colors = {
-        breakfast: '#FFD700', // 金色
-        lunch: '#FFA500',     // オレンジ
-        dinner: '#8B4513',    // 茶色
-      };
-      
-      markedDates[date].dots.push({
-        color: colors[attendance.mealType],
-        selectedDotColor: colors[attendance.mealType],
-      });
     });
     
     // 選択された日付をハイライト
-    if (markedDates[selectedDate]) {
-      markedDates[selectedDate].selected = true;
-      markedDates[selectedDate].selectedColor = '#6B7C32';
-    } else {
-      markedDates[selectedDate] = {
-        selected: true,
-        selectedColor: '#6B7C32',
-      };
-    }
+    markedDates[selectedDate] = {
+      selected: true,
+      selectedColor: '#6B7C32',
+    };
     
     return markedDates;
   };
@@ -105,9 +93,8 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* カレンダー */}
-        <View style={styles.calendarSection}>
-          <Text style={styles.sectionTitle}>カレンダー</Text>
+        {/* コンパクトカレンダー */}
+        <View style={styles.compactCalendarSection}>
           <Calendar
             current={selectedDate}
             onDayPress={(day) => setSelectedDate(day.dateString)}
@@ -123,7 +110,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
             disableArrowRight={false}
             disableAllTouchEventsForDisabledDays={true}
             enableSwipeMonths={true}
-            markingType={'multi-dot'}
+            markingType={'dot'}
             markedDates={getMarkedDates()}
             theme={{
               backgroundColor: '#ffffff',
@@ -134,8 +121,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
               todayTextColor: '#6B7C32',
               dayTextColor: '#2d4150',
               textDisabledColor: '#d9e1e8',
-              dotColor: '#00adf5',
-              selectedDotColor: '#ffffff',
               arrowColor: '#6B7C32',
               disabledArrowColor: '#d9e1e8',
               monthTextColor: '#6B7C32',
@@ -143,24 +128,35 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
               textDayFontWeight: '300',
               textMonthFontWeight: 'bold',
               textDayHeaderFontWeight: '300',
-              textDayFontSize: 16,
+              textDayFontSize: 14,
               textMonthFontSize: 16,
-              textDayHeaderFontSize: 13,
+              textDayHeaderFontSize: 11,
+              'stylesheet.calendar.header': {
+                week: {
+                  marginTop: 7,
+                  flexDirection: 'row',
+                  justifyContent: 'space-around',
+                  marginBottom: 5,
+                }
+              },
+              'stylesheet.day.basic': {
+                base: {
+                  width: 32,
+                  height: 32,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                today: {
+                  backgroundColor: '#6B7C32',
+                  borderRadius: 16,
+                },
+                selected: {
+                  backgroundColor: '#6B7C32',
+                  borderRadius: 16,
+                }
+              }
             }}
           />
-          
-          {/* 凡例 */}
-          <View style={styles.legend}>
-            <Text style={styles.legendTitle}>凡例</Text>
-            <View style={styles.legendItems}>
-              {mealTypes.map((meal) => (
-                <View key={meal.type} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: meal.color }]} />
-                  <Text style={styles.legendText}>{meal.label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
         </View>
 
         {/* 選択された日付の詳細 */}
@@ -254,46 +250,16 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 15,
   },
-  calendarSection: {
+  compactCalendarSection: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
+    padding: 10,
+    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  legend: {
-    marginTop: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  legendTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  legendItems: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#666',
   },
   detailSection: {
     backgroundColor: '#FFFFFF',
