@@ -25,6 +25,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   // カレンダー用のマーキングデータを作成（シンプル版）
   const getMarkedDates = () => {
     const markedDates: any = {};
+    const today = new Date().toISOString().split('T')[0];
     
     // 食事参加がある日付を薄くマーク
     mealAttendances.forEach((attendance) => {
@@ -38,11 +39,27 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       }
     });
     
+    // 今日の日付をマーク
+    if (!markedDates[today]) {
+      markedDates[today] = {};
+    }
+    markedDates[today].marked = true;
+    markedDates[today].today = true;
+    markedDates[today].todayTextColor = '#6B7C32';
+    markedDates[today].todayBackgroundColor = '#E8F5E9';
+    
     // 選択された日付をハイライト
-    markedDates[selectedDate] = {
-      selected: true,
-      selectedColor: '#6B7C32',
-    };
+    if (selectedDate !== today) {
+      markedDates[selectedDate] = {
+        selected: true,
+        selectedColor: '#6B7C32',
+      };
+    } else {
+      // 今日が選択されている場合は特別なスタイル
+      markedDates[today].selected = true;
+      markedDates[today].selectedColor = '#6B7C32';
+      markedDates[today].selectedTextColor = 'white';
+    }
     
     return markedDates;
   };
@@ -117,13 +134,22 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
         <View style={styles.weekCalendarSection}>
           <View style={styles.weekHeader}>
             <Text style={styles.weekTitle}>週間表示</Text>
-            <TouchableOpacity 
-              style={styles.monthButton}
-              onPress={() => setShowMonthModal(true)}
-            >
-              <Ionicons name="calendar-outline" size={16} color="#6B7C32" />
-              <Text style={styles.monthButtonText}>月表示</Text>
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity 
+                style={styles.todayButton}
+                onPress={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              >
+                <Ionicons name="today-outline" size={16} color="#6B7C32" />
+                <Text style={styles.todayButtonText}>今日</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.monthButton}
+                onPress={() => setShowMonthModal(true)}
+              >
+                <Ionicons name="calendar-outline" size={16} color="#6B7C32" />
+                <Text style={styles.monthButtonText}>月表示</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
           <View style={styles.weekDaysContainer}>
@@ -341,6 +367,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  todayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+  },
+  todayButtonText: {
+    fontSize: 14,
+    color: '#F57C00',
+    fontWeight: '500',
+    marginLeft: 4,
   },
   monthButton: {
     flexDirection: 'row',
