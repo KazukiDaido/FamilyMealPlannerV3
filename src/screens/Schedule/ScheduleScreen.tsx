@@ -72,18 +72,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     return attendance ? attendance.attendees.includes(memberId) : false;
   };
 
-  // 統計情報を計算
-  const getStatistics = () => {
-    const totalMeals = mealAttendances.length;
-    const totalPossibleAttendances = members.length * 3 * 30; // 仮に30日間として計算
-    const totalAttendances = mealAttendances.reduce((sum, att) => sum + att.attendees.length, 0);
-    
-    return {
-      totalMeals,
-      totalAttendances,
-      averageAttendance: totalMeals > 0 ? Math.round((totalAttendances / (totalMeals * members.length)) * 100) : 0,
-    };
-  };
 
   const mealTypes: { type: MealType; label: string; icon: string; color: string }[] = [
     { type: 'breakfast', label: '朝食', icon: 'sunny-outline', color: '#FFD700' },
@@ -91,7 +79,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     { type: 'dinner', label: '夕食', icon: 'moon-outline', color: '#8B4513' },
   ];
 
-  const statistics = getStatistics();
   const selectedDateAttendances = getSelectedDateAttendances();
 
   const formatDate = (dateString: string) => {
@@ -137,25 +124,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* 統計情報 */}
-        <View style={styles.statisticsSection}>
-          <Text style={styles.sectionTitle}>統計情報</Text>
-          <View style={styles.statisticsGrid}>
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsNumber}>{statistics.totalMeals}</Text>
-              <Text style={styles.statisticsLabel}>登録された食事</Text>
-            </View>
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsNumber}>{statistics.totalAttendances}</Text>
-              <Text style={styles.statisticsLabel}>総参加回数</Text>
-            </View>
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsNumber}>{statistics.averageAttendance}%</Text>
-              <Text style={styles.statisticsLabel}>平均参加率</Text>
-            </View>
-          </View>
-        </View>
-
         {/* カレンダー */}
         <View style={styles.calendarSection}>
           <Text style={styles.sectionTitle}>カレンダー</Text>
@@ -326,35 +294,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 15,
-  },
-  statisticsSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statisticsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statisticsItem: {
-    alignItems: 'center',
-  },
-  statisticsNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#6B7C32',
-    marginBottom: 5,
-  },
-  statisticsLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
   },
   calendarSection: {
     backgroundColor: '#FFFFFF',
