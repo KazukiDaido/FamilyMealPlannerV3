@@ -2,14 +2,14 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 
-// Firebase設定（開発用 - 実際のプロジェクトでは環境変数を使用）
+// Firebase設定（実際のプロジェクト用）
 const firebaseConfig = {
-  apiKey: "demo-api-key",
-  authDomain: "family-meal-planner-demo.firebaseapp.com",
-  projectId: "family-meal-planner-demo",
-  storageBucket: "family-meal-planner-demo.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "demo-app-id"
+  apiKey: "AIzaSyDemoKey-ReplaceWithYourActualKey",
+  authDomain: "family-meal-planner-v3.firebaseapp.com",
+  projectId: "family-meal-planner-v3",
+  storageBucket: "family-meal-planner-v3.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef1234567890"
 };
 
 // Firebase アプリを初期化
