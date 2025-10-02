@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useSelector, useDispatch } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import { User } from 'firebase/auth';
 
 // Redux Store
 import { store, persistor, RootState } from './src/store';
@@ -23,6 +24,8 @@ import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
 import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
 import NotificationService from './src/services/notificationService';
+import AuthService from './src/services/authService';
+import { startRealtimeSync } from './src/store/slices/familySlice';
 
 // Settings Stack Navigator
 function SettingsStack() {
@@ -70,9 +73,23 @@ function FamilyStack() {
 
 // メインのAppコンポーネント
 function AppContent() {
-  const currentMemberId = useSelector((state: RootState) => state.family.currentMemberId);
+  const dispatch = useDispatch();
+  const { currentMemberId, isConnected } = useSelector((state: RootState) => state.family);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    // Firebase認証状態の監視
+    const unsubscribeAuth = AuthService.onAuthStateChanged((user) => {
+      setFirebaseUser(user);
+      setIsInitializing(false);
+      
+      if (user) {
+        // ユーザーがログインしている場合はリアルタイム同期を開始
+        dispatch(startRealtimeSync());
+      }
+    });
+
     // 通知権限の要求と初期設定
     const initializeNotifications = async () => {
       try {
@@ -88,10 +105,25 @@ function AppContent() {
     };
 
     initializeNotifications();
-  }, []);
 
-  // 認証されていない場合はログイン画面を表示
-  if (!currentMemberId) {
+    // クリーンアップ
+    return () => {
+      unsubscribeAuth();
+    };
+  }, [dispatch]);
+
+  // 初期化中はローディング画面を表示
+  if (isInitializing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6B7C32" />
+        <Text style={styles.loadingText}>アプリを初期化中...</Text>
+      </View>
+    );
+  }
+
+  // Firebase認証されていない場合はログイン画面を表示
+  if (!firebaseUser) {
     return (
       <NavigationContainer>
         <AuthStack />
@@ -181,6 +213,18 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F7',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#6B7C32',
+    fontWeight: '500',
+  },
   screen: {
     flex: 1,
     justifyContent: 'center',

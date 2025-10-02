@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { FamilyMember, MealAttendance, MealType, PersonalResponse, ResponseSettings } from '../../types';
+import SyncService from '../../services/syncService';
 
 interface FamilyState {
   members: FamilyMember[];
@@ -8,6 +9,8 @@ interface FamilyState {
   responseSettings: ResponseSettings; // 回答設定
   isLoading: boolean;
   error: string | null;
+  isConnected: boolean; // ネットワーク接続状態
+  lastSyncTime: string | null; // 最後の同期時刻
 }
 
 const initialState: FamilyState = {
@@ -20,6 +23,8 @@ const initialState: FamilyState = {
   },
   isLoading: false,
   error: null,
+  isConnected: false,
+  lastSyncTime: null,
 };
 
 // ダミーデータ
@@ -49,33 +54,37 @@ const dummyAttendances: MealAttendance[] = [
   },
 ];
 
-// 非同期アクション: 家族メンバーを取得
+// 非同期アクション: 家族メンバーを取得（Firebase連携）
 export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejectValue: string }>(
   'family/fetchMembers',
   async (_, { rejectWithValue }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return dummyMembers;
+      const members = await SyncService.syncFamilyMembers();
+      return members;
     } catch (err) {
-      return rejectWithValue('家族メンバーの取得に失敗しました。');
+      // Firebase接続に失敗した場合はダミーデータを使用
+      console.warn('Firebase接続に失敗、ダミーデータを使用:', err);
+      return dummyMembers;
     }
   }
 );
 
-// 非同期アクション: 食事参加を取得
+// 非同期アクション: 食事参加を取得（Firebase連携）
 export const fetchMealAttendances = createAsyncThunk<MealAttendance[], void, { rejectValue: string }>(
   'family/fetchAttendances',
   async (_, { rejectWithValue }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return dummyAttendances;
+      const attendances = await SyncService.syncMealAttendances();
+      return attendances;
     } catch (err) {
-      return rejectWithValue('食事参加データの取得に失敗しました。');
+      // Firebase接続に失敗した場合はダミーデータを使用
+      console.warn('Firebase接続に失敗、ダミーデータを使用:', err);
+      return dummyAttendances;
     }
   }
 );
 
-// 非同期アクション: 食事参加を登録
+// 非同期アクション: 食事参加を登録（Firebase連携）
 export const registerMealAttendance = createAsyncThunk<
   MealAttendance,
   { date: string; mealType: MealType; attendees: string[]; registeredBy: string },
@@ -84,14 +93,20 @@ export const registerMealAttendance = createAsyncThunk<
   'family/registerAttendance',
   async (attendanceData, { rejectWithValue }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const newAttendance: MealAttendance = {
-        id: Date.now().toString(),
-        ...attendanceData,
+      const newAttendance: Omit<MealAttendance, 'id'> = {
         createdAt: new Date().toISOString(),
+        ...attendanceData,
       };
-      return newAttendance;
+      
+      // Firebaseに保存
+      const attendanceId = await SyncService.saveMealAttendance(newAttendance);
+      
+      return {
+        id: attendanceId,
+        ...newAttendance,
+      };
     } catch (err) {
+      console.error('食事参加登録エラー:', err);
       return rejectWithValue('食事参加の登録に失敗しました。');
     }
   }
@@ -199,10 +214,56 @@ export const updateResponseSettings = createAsyncThunk<ResponseSettings, Respons
   }
 );
 
+// リアルタイム同期の開始
+export const startRealtimeSync = createAsyncThunk<void, void, { rejectValue: string }>(
+  'family/startRealtimeSync',
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      // 家族メンバーのリアルタイム監視
+      const unsubscribeMembers = SyncService.subscribeToFamilyMembers((members) => {
+        dispatch(setFamilyMembers(members));
+      });
+
+      // 食事参加データのリアルタイム監視
+      const unsubscribeAttendances = SyncService.subscribeToMealAttendances((attendances) => {
+        dispatch(setMealAttendances(attendances));
+      });
+
+      // 接続状態を更新
+      dispatch(setConnected(true));
+      dispatch(setLastSyncTime(new Date().toISOString()));
+
+      // クリーンアップ関数を保存（実際の実装では適切に管理する）
+      return { unsubscribeMembers, unsubscribeAttendances };
+    } catch (err) {
+      console.error('リアルタイム同期開始エラー:', err);
+      return rejectWithValue('リアルタイム同期の開始に失敗しました。');
+    }
+  }
+);
+
 const familySlice = createSlice({
   name: 'family',
   initialState,
-  reducers: {},
+  reducers: {
+    setFamilyMembers: (state, action: PayloadAction<FamilyMember[]>) => {
+      state.members = action.payload;
+      state.lastSyncTime = new Date().toISOString();
+    },
+    setMealAttendances: (state, action: PayloadAction<MealAttendance[]>) => {
+      state.mealAttendances = action.payload;
+      state.lastSyncTime = new Date().toISOString();
+    },
+    setConnected: (state, action: PayloadAction<boolean>) => {
+      state.isConnected = action.payload;
+    },
+    setLastSyncTime: (state, action: PayloadAction<string>) => {
+      state.lastSyncTime = action.payload;
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       // fetchFamilyMembers
@@ -315,5 +376,14 @@ const familySlice = createSlice({
       });
   },
 });
+
+// アクションをエクスポート
+export const { 
+  setFamilyMembers, 
+  setMealAttendances, 
+  setConnected, 
+  setLastSyncTime, 
+  clearError 
+} = familySlice.actions;
 
 export default familySlice.reducer;

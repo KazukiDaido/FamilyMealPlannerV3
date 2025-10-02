@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { loginAsMember, fetchFamilyMembers } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
+import AuthService from '../../services/authService';
 
 interface FamilyMemberLoginScreenProps {
   navigation: any;
@@ -32,12 +33,23 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
     }
 
     try {
+      // 選択された家族メンバー情報を取得
+      const selectedMember = members.find(member => member.id === selectedMemberId);
+      if (!selectedMember) {
+        Alert.alert('エラー', '選択された家族メンバーが見つかりません。');
+        return;
+      }
+
+      // Firebase認証で匿名ログイン
+      await AuthService.signInAsFamilyMember(selectedMemberId, selectedMember.name);
+      
+      // Redux stateも更新
       await dispatch(loginAsMember(selectedMemberId)).unwrap();
-      Alert.alert('ログイン成功', 'ようこそ！', [
-        { text: 'OK', onPress: () => navigation.replace('MainTabs') }
-      ]);
+      
+      Alert.alert('ログイン成功', `ようこそ、${selectedMember.name}さん！`);
     } catch (error: any) {
-      Alert.alert('ログインエラー', error || 'ログインに失敗しました。');
+      console.error('ログインエラー:', error);
+      Alert.alert('ログインエラー', error.message || 'ログインに失敗しました。');
     }
   };
 
