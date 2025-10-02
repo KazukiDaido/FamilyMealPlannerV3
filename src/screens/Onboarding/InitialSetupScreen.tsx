@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { addFamilyMember, loginAsMember } from '../../store/slices/familySlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddMemberModal from '../../components/AddMemberModal';
 
 interface InitialSetupScreenProps {
   navigation: any;
@@ -18,28 +19,38 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
 
   const [familyName, setFamilyName] = useState('');
   const [members, setMembers] = useState([
-    { name: '', role: 'parent' as 'parent' | 'child', isProxy: true },
-    { name: '', role: 'parent' as 'parent' | 'child', isProxy: true },
+    { name: 'あなたの名前', isProxy: true },
   ]);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
-  const handleAddMember = () => {
-    setMembers([...members, { name: '', role: 'child', isProxy: false }]);
+  const handleAddMember = (newMember: { name: string; isProxy: boolean }) => {
+    setMembers([...members, newMember]);
   };
 
   const handleRemoveMember = (index: number) => {
-    if (members.length > 1) {
-      setMembers(members.filter((_, i) => i !== index));
+    if (members.length <= 1) {
+      Alert.alert('エラー', '少なくとも1人の家族メンバーが必要です。');
+      return;
     }
+    
+    const newMembers = [...members];
+    newMembers.splice(index, 1);
+    setMembers(newMembers);
   };
 
-  const handleMemberChange = (index: number, field: string, value: string | boolean) => {
+  const handleMemberNameChange = (text: string, index: number) => {
     const newMembers = [...members];
-    newMembers[index] = { ...newMembers[index], [field]: value };
+    newMembers[index].name = text;
+    setMembers(newMembers);
+  };
+
+  const handleMemberProxyChange = (isProxy: boolean, index: number) => {
+    const newMembers = [...members];
+    newMembers[index].isProxy = isProxy;
     setMembers(newMembers);
   };
 
   const handleComplete = async () => {
-    // バリデーション
     if (!familyName.trim()) {
       Alert.alert('エラー', '家族名を入力してください。');
       return;
@@ -58,7 +69,7 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
         const member = validMembers[i];
         const result = await dispatch(addFamilyMember({
           name: member.name.trim(),
-          role: member.role,
+          role: 'parent', // 親/子の判定を削除
           isProxy: member.isProxy,
         })).unwrap();
         
@@ -84,7 +95,6 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
           {
             text: 'OK',
             onPress: () => {
-              // オンボーディング完了を親コンポーネントに通知
               if (onComplete) {
                 onComplete();
               }
@@ -97,99 +107,74 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
     }
   };
 
-  const renderMemberInput = (member: any, index: number) => (
+  const renderMemberCard = (member: any, index: number) => (
     <View key={index} style={styles.memberCard}>
       <View style={styles.memberHeader}>
-        <Text style={styles.memberLabel}>家族メンバー {index + 1}</Text>
+        <Text style={styles.memberLabel}>メンバー {index + 1}</Text>
         {members.length > 1 && (
-          <TouchableOpacity
-            onPress={() => handleRemoveMember(index)}
-            style={styles.removeButton}
-          >
+          <TouchableOpacity onPress={() => handleRemoveMember(index)} style={styles.removeButton}>
             <Ionicons name="close-circle" size={24} color="#D9534F" />
           </TouchableOpacity>
         )}
       </View>
-
+      
       <TextInput
         style={styles.input}
-        placeholder="名前を入力してください"
+        placeholder="名前を入力"
         value={member.name}
-        onChangeText={(value) => handleMemberChange(index, 'name', value)}
+        onChangeText={(text) => handleMemberNameChange(text, index)}
+        autoCapitalize="words"
       />
-
-      <View style={styles.roleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.roleButton,
-            member.role === 'parent' && styles.roleButtonActive,
-          ]}
-          onPress={() => handleMemberChange(index, 'role', 'parent')}
-        >
-          <Ionicons
-            name={member.role === 'parent' ? 'person' : 'person-outline'}
-            size={20}
-            color={member.role === 'parent' ? 'white' : '#6B7C32'}
-          />
-          <Text
-            style={[
-              styles.roleButtonText,
-              member.role === 'parent' && styles.roleButtonTextActive,
-            ]}
+      
+      <View style={styles.proxyContainer}>
+        <View style={styles.proxyHeader}>
+          <Text style={styles.proxyLabel}>代理登録可能</Text>
+          <TouchableOpacity 
+            style={styles.infoButton}
+            onPress={() => {
+              Alert.alert(
+                '代理登録とは？',
+                '他の家族メンバーの食事参加を代わりに登録できる機能です。\n\n例：お母さんが子供たちの食事参加をまとめて登録する',
+                [{ text: 'OK' }]
+              );
+            }}
           >
-            親
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.roleButton,
-            member.role === 'child' && styles.roleButtonActive,
-          ]}
-          onPress={() => handleMemberChange(index, 'role', 'child')}
-        >
-          <Ionicons
-            name={member.role === 'child' ? 'person' : 'person-outline'}
-            size={20}
-            color={member.role === 'child' ? 'white' : '#6B7C32'}
-          />
-          <Text
-            style={[
-              styles.roleButtonText,
-              member.role === 'child' && styles.roleButtonTextActive,
-            ]}
-          >
-            子
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {member.role === 'parent' && (
-        <View style={styles.proxyContainer}>
-          <TouchableOpacity
-            style={styles.proxyButton}
-            onPress={() => handleMemberChange(index, 'isProxy', !member.isProxy)}
-          >
-            <Ionicons
-              name={member.isProxy ? 'checkmark-circle' : 'checkmark-circle-outline'}
-              size={24}
-              color={member.isProxy ? '#6B7C32' : '#ccc'}
-            />
-            <Text style={styles.proxyText}>代理登録可能</Text>
+            <Ionicons name="help-circle-outline" size={20} color="#6B7C32" />
           </TouchableOpacity>
         </View>
-      )}
+        
+        <View style={styles.proxyOptions}>
+          <TouchableOpacity
+            style={[styles.proxyButton, member.isProxy && styles.proxyButtonActive]}
+            onPress={() => handleMemberProxyChange(true, index)}
+          >
+            <Text style={[styles.proxyButtonText, member.isProxy && styles.proxyButtonTextActive]}>
+              はい
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.proxyButton, !member.isProxy && styles.proxyButtonActive]}
+            onPress={() => handleMemberProxyChange(false, index)}
+          >
+            <Text style={[styles.proxyButtonText, !member.isProxy && styles.proxyButtonTextActive]}>
+              いいえ
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>初期設定</Text>
-        <Text style={styles.headerSubtitle}>家族の情報を入力してください</Text>
+        <Text style={styles.headerTitle}>家族の初期設定</Text>
+        <Text style={styles.headerSubtitle}>
+          家族名を入力し、家族メンバーを登録してください
+        </Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.formContainer}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>家族名</Text>
           <TextInput
@@ -204,27 +189,28 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>家族メンバー</Text>
-            <TouchableOpacity onPress={handleAddMember} style={styles.addButton}>
-              <Ionicons name="add-circle" size={24} color="#6B7C32" />
-              <Text style={styles.addButtonText}>追加</Text>
+            <TouchableOpacity 
+              style={styles.addMemberButton} 
+              onPress={() => setShowAddMemberModal(true)}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#6B7C32" />
+              <Text style={styles.addMemberButtonText}>メンバーを追加</Text>
             </TouchableOpacity>
           </View>
-
-          {members.map(renderMemberInput)}
+          
+          {members.map(renderMemberCard)}
         </View>
+
+        <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
+          <Text style={styles.completeButtonText}>設定を完了する</Text>
+        </TouchableOpacity>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.completeButton}
-          onPress={handleComplete}
-          disabled={isLoading}
-        >
-          <Text style={styles.completeButtonText}>
-            {isLoading ? '設定中...' : '設定を完了'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <AddMemberModal
+        visible={showAddMemberModal}
+        onClose={() => setShowAddMemberModal(false)}
+        onAddMember={handleAddMember}
+      />
     </SafeAreaView>
   );
 };
@@ -235,28 +221,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F7F7',
   },
   header: {
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
     color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  content: {
+  formContainer: {
     flex: 1,
     padding: 20,
   },
   section: {
-    marginBottom: 30,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -267,105 +264,102 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    color: '#6B7C32',
   },
   input: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#333',
     borderWidth: 1,
     borderColor: '#E0E0E0',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-  },
-  addButtonText: {
-    marginLeft: 4,
-    color: '#6B7C32',
-    fontWeight: '600',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 15,
+    backgroundColor: '#F9F9F9',
   },
   memberCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    backgroundColor: '#F9F9F9',
   },
   memberHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   memberLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#333',
   },
   removeButton: {
-    padding: 4,
+    padding: 5,
   },
-  roleContainer: {
-    flexDirection: 'row',
-    marginBottom: 12,
+  proxyContainer: {
+    marginTop: 10,
   },
-  roleButton: {
-    flex: 1,
+  proxyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 4,
+    marginBottom: 10,
+  },
+  proxyLabel: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+  },
+  infoButton: {
+    marginLeft: 8,
+    padding: 2,
+  },
+  proxyOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#EFEFEF',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  proxyButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  proxyButtonActive: {
+    backgroundColor: '#6B7C32',
+  },
+  proxyButtonText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '600',
+  },
+  proxyButtonTextActive: {
+    color: 'white',
+  },
+  addMemberButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#6B7C32',
-    backgroundColor: 'white',
   },
-  roleButtonActive: {
-    backgroundColor: '#6B7C32',
-  },
-  roleButtonText: {
-    marginLeft: 8,
-    color: '#6B7C32',
-    fontWeight: '600',
-  },
-  roleButtonTextActive: {
-    color: 'white',
-  },
-  proxyContainer: {
-    marginTop: 8,
-  },
-  proxyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-  },
-  proxyText: {
-    marginLeft: 8,
-    color: '#666',
+  addMemberButtonText: {
     fontSize: 14,
-  },
-  footer: {
-    padding: 20,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    color: '#6B7C32',
+    fontWeight: 'bold',
+    marginLeft: 6,
   },
   completeButton: {
     backgroundColor: '#6B7C32',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 15,
+    borderRadius: 10,
     alignItems: 'center',
+    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

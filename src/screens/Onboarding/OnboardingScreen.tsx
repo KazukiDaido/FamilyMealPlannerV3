@@ -61,12 +61,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
       });
     } else {
       // 最後のスライドの場合は初期設定画面に遷移
-      navigation.replace('InitialSetup');
+      navigation.navigate('FamilyIdInput');
     }
   };
 
   const handleSkip = () => {
-    navigation.replace('InitialSetup');
+    navigation.navigate('FamilyIdInput');
   };
 
   const renderSlide = (item: typeof onboardingData[0]) => (

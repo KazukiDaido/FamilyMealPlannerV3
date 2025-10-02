@@ -100,8 +100,14 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   const getWeekDates = (dateString: string) => {
     const date = new Date(dateString);
     const dayOfWeek = date.getDay();
+    // 日曜日を0として、月曜日を週の開始とする
     const monday = new Date(date);
-    monday.setDate(date.getDate() - dayOfWeek + 1);
+    // 日曜日の場合は前の週の月曜日を取得
+    if (dayOfWeek === 0) {
+      monday.setDate(date.getDate() - 6);
+    } else {
+      monday.setDate(date.getDate() - dayOfWeek + 1);
+    }
     
     const weekDates = [];
     for (let i = 0; i < 7; i++) {
@@ -110,6 +116,40 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       weekDates.push(weekDate.toISOString().split('T')[0]);
     }
     return weekDates;
+  };
+
+  // 週の移動関数
+  const goToPreviousWeek = () => {
+    const currentDate = new Date(selectedDate);
+    currentDate.setDate(currentDate.getDate() - 7);
+    setSelectedDate(currentDate.toISOString().split('T')[0]);
+  };
+
+  const goToNextWeek = () => {
+    const currentDate = new Date(selectedDate);
+    currentDate.setDate(currentDate.getDate() + 7);
+    setSelectedDate(currentDate.toISOString().split('T')[0]);
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+  };
+
+  // 週の範囲をフォーマットする関数
+  const formatWeekRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const startMonth = start.getMonth() + 1;
+    const startDay = start.getDate();
+    const endMonth = end.getMonth() + 1;
+    const endDay = end.getDate();
+    
+    if (startMonth === endMonth) {
+      return `${startMonth}月${startDay}日 - ${endDay}日`;
+    } else {
+      return `${startMonth}月${startDay}日 - ${endMonth}月${endDay}日`;
+    }
   };
 
   const weekDates = getWeekDates(selectedDate);
@@ -137,7 +177,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
             <View style={styles.headerButtons}>
               <TouchableOpacity 
                 style={styles.todayButton}
-                onPress={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                onPress={goToToday}
               >
                 <Ionicons name="today-outline" size={16} color="#6B7C32" />
                 <Text style={styles.todayButtonText}>今日</Text>
@@ -150,6 +190,29 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
                 <Text style={styles.monthButtonText}>月表示</Text>
               </TouchableOpacity>
             </View>
+          </View>
+          
+          {/* 週移動ボタン */}
+          <View style={styles.weekNavigation}>
+            <TouchableOpacity 
+              style={styles.weekNavButton}
+              onPress={goToPreviousWeek}
+            >
+              <Ionicons name="chevron-back" size={20} color="#6B7C32" />
+              <Text style={styles.weekNavButtonText}>前の週</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.weekRangeText}>
+              {formatWeekRange(weekDates[0], weekDates[6])}
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.weekNavButton}
+              onPress={goToNextWeek}
+            >
+              <Text style={styles.weekNavButtonText}>次の週</Text>
+              <Ionicons name="chevron-forward" size={20} color="#6B7C32" />
+            </TouchableOpacity>
           </View>
           
           <View style={styles.weekDaysContainer}>
@@ -401,6 +464,34 @@ const styles = StyleSheet.create({
     color: '#6B7C32',
     fontWeight: '500',
     marginLeft: 4,
+  },
+  weekNavigation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  weekNavButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  weekNavButtonText: {
+    fontSize: 14,
+    color: '#6B7C32',
+    fontWeight: '500',
+  },
+  weekRangeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
   },
   weekDaysContainer: {
     flexDirection: 'row',

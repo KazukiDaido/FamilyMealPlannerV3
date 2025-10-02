@@ -27,6 +27,7 @@ import NotificationSettingsScreen from './src/screens/Settings/NotificationSetti
 import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
 import OnboardingScreen from './src/screens/Onboarding/OnboardingScreen';
 import InitialSetupScreen from './src/screens/Onboarding/InitialSetupScreen';
+import FamilyIdInputScreen from './src/screens/Onboarding/FamilyIdInputScreen';
 import NotificationService from './src/services/notificationService';
 import OnboardingService from './src/services/onboardingService';
 // import AuthService from './src/services/authService';
@@ -50,6 +51,9 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="FamilyIdInput">
+        {(props) => <FamilyIdInputScreen {...props} onFamilyIdSubmit={onComplete} />}
+      </Stack.Screen>
       <Stack.Screen name="InitialSetup">
         {(props) => <InitialSetupScreen {...props} onComplete={onComplete} />}
       </Stack.Screen>
