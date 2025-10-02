@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { loginAsMember, fetchFamilyMembers } from '../../store/slices/familySlice';
+import { loginAsMember, fetchFamilyMembers, addFamilyMember } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
 import AuthService from '../../services/authService';
 
@@ -101,7 +101,37 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
               <Text style={styles.noMembersSubtext}>まず家族メンバーを追加してください</Text>
               <TouchableOpacity 
                 style={styles.addMemberButton}
-                onPress={() => navigation.navigate('Family')}
+                onPress={() => {
+                  Alert.alert(
+                    'サンプル家族を追加',
+                    'テスト用のサンプル家族メンバーを追加しますか？\n（お父さん、お母さん、太郎、花子）',
+                    [
+                      { text: 'キャンセル', style: 'cancel' },
+                      { 
+                        text: '追加する', 
+                        onPress: async () => {
+                          try {
+                            // サンプル家族メンバーを追加
+                            const sampleMembers = [
+                              { name: 'お父さん', role: 'parent', isProxy: true },
+                              { name: 'お母さん', role: 'parent', isProxy: true },
+                              { name: '太郎', role: 'child', isProxy: false },
+                              { name: '花子', role: 'child', isProxy: false },
+                            ];
+                            
+                            for (const member of sampleMembers) {
+                              await dispatch(addFamilyMember(member));
+                            }
+                            
+                            Alert.alert('完了', 'サンプル家族メンバーを追加しました！');
+                          } catch (error) {
+                            Alert.alert('エラー', '家族メンバーの追加に失敗しました。');
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }}
               >
                 <Text style={styles.addMemberButtonText}>家族メンバーを追加</Text>
               </TouchableOpacity>
