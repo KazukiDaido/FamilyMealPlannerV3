@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
@@ -16,6 +16,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { mealAttendances, members, isLoading } = useSelector((state: RootState) => state.family);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [showMonthModal, setShowMonthModal] = useState<boolean>(false);
 
   useEffect(() => {
     dispatch(fetchMealAttendances());
@@ -78,6 +79,25 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     });
   };
 
+  // 週間カレンダーの日付を取得
+  const getWeekDates = (dateString: string) => {
+    const date = new Date(dateString);
+    const dayOfWeek = date.getDay();
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - dayOfWeek + 1);
+    
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const weekDate = new Date(monday);
+      weekDate.setDate(monday.getDate() + i);
+      weekDates.push(weekDate.toISOString().split('T')[0]);
+    }
+    return weekDates;
+  };
+
+  const weekDates = getWeekDates(selectedDate);
+  const weekDayNames = ['月', '火', '水', '木', '金', '土', '日'];
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -93,70 +113,56 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* コンパクトカレンダー */}
-        <View style={styles.compactCalendarSection}>
-          <Calendar
-            current={selectedDate}
-            onDayPress={(day) => setSelectedDate(day.dateString)}
-            monthFormat={'yyyy年 M月'}
-            hideExtraDays={true}
-            disableMonthChange={false}
-            firstDay={1}
-            hideDayNames={false}
-            showWeekNumbers={false}
-            onPressArrowLeft={(subtractMonth) => subtractMonth()}
-            onPressArrowRight={(addMonth) => addMonth()}
-            disableArrowLeft={false}
-            disableArrowRight={false}
-            disableAllTouchEventsForDisabledDays={true}
-            enableSwipeMonths={true}
-            markingType={'dot'}
-            markedDates={getMarkedDates()}
-            theme={{
-              backgroundColor: '#ffffff',
-              calendarBackground: '#ffffff',
-              textSectionTitleColor: '#6B7C32',
-              selectedDayBackgroundColor: '#6B7C32',
-              selectedDayTextColor: '#ffffff',
-              todayTextColor: '#6B7C32',
-              dayTextColor: '#2d4150',
-              textDisabledColor: '#d9e1e8',
-              arrowColor: '#6B7C32',
-              disabledArrowColor: '#d9e1e8',
-              monthTextColor: '#6B7C32',
-              indicatorColor: '#6B7C32',
-              textDayFontWeight: '300',
-              textMonthFontWeight: 'bold',
-              textDayHeaderFontWeight: '300',
-              textDayFontSize: 14,
-              textMonthFontSize: 16,
-              textDayHeaderFontSize: 11,
-              'stylesheet.calendar.header': {
-                week: {
-                  marginTop: 7,
-                  flexDirection: 'row',
-                  justifyContent: 'space-around',
-                  marginBottom: 5,
-                }
-              },
-              'stylesheet.day.basic': {
-                base: {
-                  width: 32,
-                  height: 32,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-                today: {
-                  backgroundColor: '#6B7C32',
-                  borderRadius: 16,
-                },
-                selected: {
-                  backgroundColor: '#6B7C32',
-                  borderRadius: 16,
-                }
-              }
-            }}
-          />
+        {/* 週間カレンダー */}
+        <View style={styles.weekCalendarSection}>
+          <View style={styles.weekHeader}>
+            <Text style={styles.weekTitle}>週間表示</Text>
+            <TouchableOpacity 
+              style={styles.monthButton}
+              onPress={() => setShowMonthModal(true)}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#6B7C32" />
+              <Text style={styles.monthButtonText}>月表示</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.weekDaysContainer}>
+            {weekDates.map((date, index) => {
+              const dateObj = new Date(date);
+              const dayName = weekDayNames[index];
+              const dayNumber = dateObj.getDate();
+              const hasMeals = mealAttendances.some(att => att.date === date);
+              const isSelected = date === selectedDate;
+              const isToday = date === new Date().toISOString().split('T')[0];
+              
+              return (
+                <TouchableOpacity
+                  key={date}
+                  style={[
+                    styles.weekDayItem,
+                    isSelected && styles.selectedWeekDay,
+                    isToday && !isSelected && styles.todayWeekDay
+                  ]}
+                  onPress={() => setSelectedDate(date)}
+                >
+                  <Text style={[
+                    styles.weekDayName,
+                    isSelected && styles.selectedWeekDayText
+                  ]}>{dayName}</Text>
+                  <Text style={[
+                    styles.weekDayNumber,
+                    isSelected && styles.selectedWeekDayText
+                  ]}>{dayNumber}</Text>
+                  {hasMeals && (
+                    <View style={[
+                      styles.mealIndicator,
+                      isSelected && styles.selectedMealIndicator
+                    ]} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* 選択された日付の詳細 */}
@@ -206,6 +212,70 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
           )}
         </View>
       </ScrollView>
+
+      {/* 月表示モーダル */}
+      <Modal
+        visible={showMonthModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowMonthModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>月表示カレンダー</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowMonthModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <Calendar
+              current={selectedDate}
+              onDayPress={(day) => {
+                setSelectedDate(day.dateString);
+                setShowMonthModal(false);
+              }}
+              monthFormat={'yyyy年 M月'}
+              hideExtraDays={true}
+              disableMonthChange={false}
+              firstDay={1}
+              hideDayNames={false}
+              showWeekNumbers={false}
+              onPressArrowLeft={(subtractMonth) => subtractMonth()}
+              onPressArrowRight={(addMonth) => addMonth()}
+              disableArrowLeft={false}
+              disableArrowRight={false}
+              disableAllTouchEventsForDisabledDays={true}
+              enableSwipeMonths={true}
+              markingType={'dot'}
+              markedDates={getMarkedDates()}
+              theme={{
+                backgroundColor: '#ffffff',
+                calendarBackground: '#ffffff',
+                textSectionTitleColor: '#6B7C32',
+                selectedDayBackgroundColor: '#6B7C32',
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: '#6B7C32',
+                dayTextColor: '#2d4150',
+                textDisabledColor: '#d9e1e8',
+                arrowColor: '#6B7C32',
+                disabledArrowColor: '#d9e1e8',
+                monthTextColor: '#6B7C32',
+                indicatorColor: '#6B7C32',
+                textDayFontWeight: '300',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '300',
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 13,
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -250,16 +320,114 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 15,
   },
-  compactCalendarSection: {
+  weekCalendarSection: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 10,
+    padding: 15,
     marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  weekTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  monthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  monthButtonText: {
+    fontSize: 14,
+    color: '#6B7C32',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  weekDaysContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekDayItem: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    minWidth: 40,
+  },
+  selectedWeekDay: {
+    backgroundColor: '#6B7C32',
+  },
+  todayWeekDay: {
+    backgroundColor: '#E8F5E9',
+  },
+  weekDayName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  weekDayNumber: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  selectedWeekDayText: {
+    color: 'white',
+  },
+  mealIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E8F5E9',
+  },
+  selectedMealIndicator: {
+    backgroundColor: 'white',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalCloseButton: {
+    padding: 5,
   },
   detailSection: {
     backgroundColor: '#FFFFFF',
