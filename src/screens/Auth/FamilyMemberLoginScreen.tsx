@@ -32,13 +32,18 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
       return;
     }
 
+    console.log('選択されたメンバーID:', selectedMemberId);
+    console.log('利用可能なメンバー:', members);
+
     try {
       // 選択された家族メンバー情報を取得
       const selectedMember = members.find(member => member.id === selectedMemberId);
       if (!selectedMember) {
-        Alert.alert('エラー', '選択された家族メンバーが見つかりません。');
+        Alert.alert('エラー', `選択された家族メンバーが見つかりません。\n選択ID: ${selectedMemberId}\n利用可能: ${members.map(m => m.id).join(', ')}`);
         return;
       }
+
+      console.log('選択されたメンバー:', selectedMember);
 
       // Firebase認証で匿名ログイン
       await AuthService.signInAsFamilyMember(selectedMemberId, selectedMember.name);
