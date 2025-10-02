@@ -46,11 +46,13 @@ const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 // Onboarding Stack Navigator
-function OnboardingStack() {
+function OnboardingStack({ onComplete }: { onComplete: () => void }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
+      <Stack.Screen name="InitialSetup">
+        {(props) => <InitialSetupScreen {...props} onComplete={onComplete} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
@@ -165,6 +167,11 @@ function AppContent() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
 
+  // オンボーディング完了を検知するための関数
+  const handleOnboardingComplete = () => {
+    setIsFirstLaunch(false);
+  };
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -222,7 +229,7 @@ function AppContent() {
   if (isFirstLaunch) {
     return (
       <NavigationContainer>
-        <OnboardingStack />
+        <OnboardingStack onComplete={handleOnboardingComplete} />
         <StatusBar style="auto" />
       </NavigationContainer>
     );

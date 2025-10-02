@@ -9,9 +9,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface InitialSetupScreenProps {
   navigation: any;
+  onComplete?: () => void;
 }
 
-const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation }) => {
+const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onComplete }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading } = useSelector((state: RootState) => state.family);
 
@@ -83,8 +84,10 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation }) =
           {
             text: 'OK',
             onPress: () => {
-              // メイン画面に遷移（App.tsxの認証状態チェックで処理される）
-              // navigation.replace('Main');
+              // オンボーディング完了を親コンポーネントに通知
+              if (onComplete) {
+                onComplete();
+              }
             },
           },
         ]

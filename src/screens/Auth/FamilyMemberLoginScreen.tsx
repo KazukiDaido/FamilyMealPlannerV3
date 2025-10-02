@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { loginAsMember, fetchFamilyMembers, addFamilyMember } from '../../store/slices/familySlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FamilyMember } from '../../types';
 // import AuthService from '../../services/authService';
 
@@ -19,10 +20,15 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
 
   // 家族メンバーを取得
   useEffect(() => {
-    dispatch(fetchFamilyMembers()).then(() => {
-      // 家族メンバーが空の場合は自動的にサンプルメンバーを追加
-      if (members.length === 0) {
-        console.log('家族メンバーが空のため、サンプルメンバーを追加します');
+    const initializeFamilyMembers = async () => {
+      await dispatch(fetchFamilyMembers());
+      
+      // オンボーディング完了フラグをチェック
+      const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+      
+      // 家族メンバーが空で、オンボーディングが完了していない場合のみサンプルメンバーを追加
+      if (members.length === 0 && !hasCompletedOnboarding) {
+        console.log('オンボーディング未完了かつ家族メンバーが空のため、サンプルメンバーを追加します');
         const sampleMembers = [
           { name: 'お父さん', role: 'parent', isProxy: true },
           { name: 'お母さん', role: 'parent', isProxy: true },
@@ -33,8 +39,12 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
         sampleMembers.forEach(member => {
           dispatch(addFamilyMember(member));
         });
+      } else if (hasCompletedOnboarding) {
+        console.log('オンボーディング完了済みのため、サンプルメンバーは追加しません');
       }
-    });
+    };
+    
+    initializeFamilyMembers();
   }, [dispatch]);
 
   const handleMemberSelect = (memberId: string) => {

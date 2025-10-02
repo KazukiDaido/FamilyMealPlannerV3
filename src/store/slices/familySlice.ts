@@ -57,10 +57,27 @@ const dummyAttendances: MealAttendance[] = [
 // 非同期アクション: 家族メンバーを取得（Firebase連携）
 export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejectValue: string }>(
   'family/fetchMembers',
-  async (_, { rejectWithValue }) => {
-    // Firebase接続を無効化、ローカルデータのみ使用
-    console.log('ローカルデータを使用して家族メンバーを取得');
-    return dummyMembers;
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      // Firebase接続を無効化、ローカルデータのみ使用
+      console.log('ローカルデータを使用して家族メンバーを取得');
+      
+      // 現在のRedux状態を取得
+      const state = getState() as { family: FamilyState };
+      const currentMembers = state.family.members;
+      
+      // 既存のメンバーがいればそれを使用、なければダミーデータを返す
+      if (currentMembers.length > 0) {
+        console.log('既存の家族メンバーを使用:', currentMembers);
+        return currentMembers;
+      } else {
+        console.log('ダミーデータを使用');
+        return dummyMembers;
+      }
+    } catch (err) {
+      console.error('家族メンバー取得エラー:', err);
+      return rejectWithValue('家族メンバーの取得に失敗しました。');
+    }
   }
 );
 
