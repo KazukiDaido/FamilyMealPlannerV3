@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import OnboardingService from '../../services/onboardingService';
 
 interface SettingsScreenProps {
   navigation: any;
@@ -11,6 +12,28 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     navigation.navigate('NotificationSettings');
   };
 
+  const handleResetOnboarding = () => {
+    Alert.alert(
+      'オンボーディングをリセット',
+      '初回起動時のオンボーディングを再度表示するように設定しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'リセット',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await OnboardingService.resetOnboarding();
+              Alert.alert('完了', 'オンボーディングがリセットされました。アプリを再起動してください。');
+            } catch (error) {
+              Alert.alert('エラー', 'リセットに失敗しました。');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const settingItems = [
     {
       id: 'notifications',
@@ -18,6 +41,13 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       subtitle: '食事時間のリマインダー',
       icon: 'notifications-outline',
       onPress: handleNotificationSettings,
+    },
+    {
+      id: 'reset_onboarding',
+      title: 'オンボーディングをリセット',
+      subtitle: '初回起動画面を再度表示',
+      icon: 'refresh-outline',
+      onPress: handleResetOnboarding,
     },
     {
       id: 'profile',
@@ -47,7 +77,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             key={item.id}
             style={styles.settingItem}
             onPress={item.onPress}
-            disabled={item.id !== 'notifications'}
+            disabled={item.id !== 'notifications' && item.id !== 'reset_onboarding'}
           >
             <View style={styles.settingIcon}>
               <Ionicons name={item.icon} size={24} color="#6B7C32" />
@@ -59,7 +89,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Ionicons 
               name="chevron-forward" 
               size={20} 
-              color={item.id === 'notifications' ? '#6B7C32' : '#ccc'} 
+              color={(item.id === 'notifications' || item.id === 'reset_onboarding') ? '#6B7C32' : '#ccc'} 
             />
           </TouchableOpacity>
         ))}

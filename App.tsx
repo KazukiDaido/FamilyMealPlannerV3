@@ -25,7 +25,10 @@ import JoinFamilyGroupScreen from './src/screens/Family/JoinFamilyGroupScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
 import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
+import OnboardingScreen from './src/screens/Onboarding/OnboardingScreen';
+import InitialSetupScreen from './src/screens/Onboarding/InitialSetupScreen';
 import NotificationService from './src/services/notificationService';
+import OnboardingService from './src/services/onboardingService';
 // import AuthService from './src/services/authService';
 // import { startRealtimeSync } from './src/store/slices/familySlice';
 
@@ -42,12 +45,91 @@ function SettingsStack() {
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+// Onboarding Stack Navigator
+function OnboardingStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
+    </Stack.Navigator>
+  );
+}
+
 // Auth Stack Navigator
 function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={FamilyMemberLoginScreen} />
     </Stack.Navigator>
+  );
+}
+
+// Main Stack Navigator (Tab Navigator)
+function MainStack() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0.1,
+          shadowOffset: { width: 0, height: -2 },
+          shadowRadius: 8,
+          height: 88,
+          paddingBottom: 24,
+          paddingTop: 8,
+        },
+        tabBarActiveTintColor: '#6B7C32',
+        tabBarInactiveTintColor: '#8A8986',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeStack}
+        options={{
+          title: '食事参加',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="restaurant-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Family"
+        component={FamilyStack}
+        options={{
+          title: '家族',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Schedule"
+        component={ScheduleScreen}
+        options={{
+          title: 'スケジュール',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsStack}
+        options={{
+          title: '設定',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
@@ -81,28 +163,44 @@ function AppContent() {
   const { currentMemberId, isConnected } = useSelector((state: RootState) => state.family);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
 
-      useEffect(() => {
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
         // Firebase認証を一時的に無効化
         console.log('Firebase認証を無効化、オフライン動作');
-        setIsInitializing(false);
         setFirebaseUser(null);
 
-    // 通知権限の要求と初期設定
-    const initializeNotifications = async () => {
-      try {
-        const hasPermission = await NotificationService.requestPermissions();
-        if (hasPermission) {
-          console.log('通知権限が許可されました');
-        } else {
-          console.log('通知権限が拒否されました');
-        }
+        // 初回起動かどうかをチェック
+        const firstLaunch = await OnboardingService.isFirstLaunch();
+        setIsFirstLaunch(firstLaunch);
+
+        // 通知権限の要求と初期設定
+        const initializeNotifications = async () => {
+          try {
+            const hasPermission = await NotificationService.requestPermissions();
+            if (hasPermission) {
+              console.log('通知権限が許可されました');
+            } else {
+              console.log('通知権限が拒否されました');
+            }
+          } catch (error) {
+            console.error('通知の初期化に失敗:', error);
+          }
+        };
+
+        initializeNotifications();
+
+        setIsInitializing(false);
       } catch (error) {
-        console.error('通知の初期化に失敗:', error);
+        console.error('アプリ初期化エラー:', error);
+        setIsInitializing(false);
+        setIsFirstLaunch(true); // エラーの場合は初回起動として扱う
       }
     };
 
-    initializeNotifications();
+    initializeApp();
 
     // クリーンアップ（Firebase認証を無効化しているため不要）
     return () => {
@@ -111,7 +209,7 @@ function AppContent() {
   }, [dispatch]);
 
   // 初期化中はローディング画面を表示
-  if (isInitializing) {
+  if (isInitializing || isFirstLaunch === null) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6B7C32" />
@@ -120,82 +218,30 @@ function AppContent() {
     );
   }
 
-      // Firebase認証されていない場合、またはReduxでログインしていない場合はログイン画面を表示
-      if (!firebaseUser && !currentMemberId) {
-        return (
-          <NavigationContainer>
-            <AuthStack />
-            <StatusBar style="auto" />
-          </NavigationContainer>
-        );
-      }
+  // 初回起動の場合はオンボーディングを表示
+  if (isFirstLaunch) {
+    return (
+      <NavigationContainer>
+        <OnboardingStack />
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    );
+  }
+
+  // Firebase認証されていない場合、またはReduxでログインしていない場合はログイン画面を表示
+  if (!firebaseUser && !currentMemberId) {
+    return (
+      <NavigationContainer>
+        <AuthStack />
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    );
+  }
 
   // 認証済みの場合はメインタブを表示
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderTopWidth: 0,
-            elevation: 0,
-            shadowOpacity: 0.1,
-            shadowOffset: { width: 0, height: -2 },
-            shadowRadius: 8,
-            height: 88,
-            paddingBottom: 24,
-            paddingTop: 8,
-          },
-          tabBarActiveTintColor: '#6B7C32',
-          tabBarInactiveTintColor: '#8A8986',
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '600',
-          },
-        }}
-      >
-        <Tab.Screen
-          name="Home"
-          component={HomeStack}
-          options={{
-            title: '食事参加',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="restaurant-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Family"
-          component={FamilyStack}
-          options={{
-            title: '家族',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="people-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Schedule"
-          component={ScheduleScreen}
-          options={{
-            title: 'スケジュール',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="calendar-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsStack}
-          options={{
-            title: '設定',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings-outline" size={size} color={color} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
+      <MainStack />
       <StatusBar style="auto" />
     </NavigationContainer>
   );
