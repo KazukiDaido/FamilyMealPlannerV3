@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { FamilyMember, MealAttendance, MealType, PersonalResponse, ResponseSettings } from '../../types';
-import SyncService from '../../services/syncService';
+// import SyncService from '../../services/syncService';
 
 interface FamilyState {
   members: FamilyMember[];
@@ -58,14 +58,9 @@ const dummyAttendances: MealAttendance[] = [
 export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejectValue: string }>(
   'family/fetchMembers',
   async (_, { rejectWithValue }) => {
-    try {
-      const members = await SyncService.syncFamilyMembers();
-      return members;
-    } catch (err) {
-      // Firebase接続に失敗した場合はダミーデータを使用
-      console.warn('Firebase接続に失敗、ダミーデータを使用:', err);
-      return dummyMembers;
-    }
+    // Firebase接続を無効化、ローカルデータのみ使用
+    console.log('ローカルデータを使用して家族メンバーを取得');
+    return dummyMembers;
   }
 );
 

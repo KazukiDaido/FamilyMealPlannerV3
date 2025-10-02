@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { loginAsMember, fetchFamilyMembers, addFamilyMember } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
-import AuthService from '../../services/authService';
+// import AuthService from '../../services/authService';
 
 interface FamilyMemberLoginScreenProps {
   navigation: any;
@@ -19,7 +19,22 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
 
   // 家族メンバーを取得
   useEffect(() => {
-    dispatch(fetchFamilyMembers());
+    dispatch(fetchFamilyMembers()).then(() => {
+      // 家族メンバーが空の場合は自動的にサンプルメンバーを追加
+      if (members.length === 0) {
+        console.log('家族メンバーが空のため、サンプルメンバーを追加します');
+        const sampleMembers = [
+          { name: 'お父さん', role: 'parent', isProxy: true },
+          { name: 'お母さん', role: 'parent', isProxy: true },
+          { name: '太郎', role: 'child', isProxy: false },
+          { name: '花子', role: 'child', isProxy: false },
+        ];
+        
+        sampleMembers.forEach(member => {
+          dispatch(addFamilyMember(member));
+        });
+      }
+    });
   }, [dispatch]);
 
   const handleMemberSelect = (memberId: string) => {
@@ -45,8 +60,8 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
 
       console.log('選択されたメンバー:', selectedMember);
 
-      // Firebase認証で匿名ログイン
-      await AuthService.signInAsFamilyMember(selectedMemberId, selectedMember.name);
+      // Firebase認証を一時的に無効化
+      console.log('Firebase認証をスキップ、オフライン動作');
       
       // Redux stateも更新
       await dispatch(loginAsMember(selectedMemberId)).unwrap();

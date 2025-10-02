@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
@@ -16,8 +16,13 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   const { members, isLoading, error } = useSelector((state: RootState) => state.family);
   const { currentFamilyGroup } = useSelector((state: RootState) => state.familyGroup);
 
+  console.log('FamilyScreen: 現在の状態:', { members: members.length, isLoading, error });
+
   useEffect(() => {
-    dispatch(fetchFamilyMembers());
+    console.log('FamilyScreen: 家族メンバーを取得中...');
+    dispatch(fetchFamilyMembers()).then((result) => {
+      console.log('FamilyScreen: 家族メンバー取得結果:', result);
+    });
   }, [dispatch]);
 
   const handleAddMember = () => {

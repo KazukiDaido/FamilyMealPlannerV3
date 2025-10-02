@@ -26,8 +26,8 @@ import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
 import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
 import NotificationService from './src/services/notificationService';
-import AuthService from './src/services/authService';
-import { startRealtimeSync } from './src/store/slices/familySlice';
+// import AuthService from './src/services/authService';
+// import { startRealtimeSync } from './src/store/slices/familySlice';
 
 // Settings Stack Navigator
 function SettingsStack() {
@@ -83,24 +83,10 @@ function AppContent() {
   const [isInitializing, setIsInitializing] = useState(true);
 
       useEffect(() => {
-        // Firebase認証状態の監視（オフライン対応）
-        try {
-          const unsubscribeAuth = AuthService.onAuthStateChanged((user) => {
-            setFirebaseUser(user);
-            setIsInitializing(false);
-            
-            if (user) {
-              // ユーザーがログインしている場合はリアルタイム同期を開始
-              dispatch(startRealtimeSync());
-            }
-          });
-        } catch (error) {
-          console.log('Firebase認証監視に失敗、オフライン動作に切り替え');
-          setIsInitializing(false);
-          // オフライン動作の場合は認証状態をnullのままにして、
-          // ReduxのcurrentMemberIdで認証状態を管理
-          setFirebaseUser(null);
-        }
+        // Firebase認証を一時的に無効化
+        console.log('Firebase認証を無効化、オフライン動作');
+        setIsInitializing(false);
+        setFirebaseUser(null);
 
     // 通知権限の要求と初期設定
     const initializeNotifications = async () => {
@@ -118,9 +104,9 @@ function AppContent() {
 
     initializeNotifications();
 
-    // クリーンアップ
+    // クリーンアップ（Firebase認証を無効化しているため不要）
     return () => {
-      unsubscribeAuth();
+      // Firebase認証を無効化しているため、クリーンアップは不要
     };
   }, [dispatch]);
 
