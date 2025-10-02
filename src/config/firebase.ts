@@ -21,17 +21,18 @@ export const db = getFirestore(app);
 // Authentication を初期化
 export const auth = getAuth(app);
 
+// Firebaseエミュレーターは無効化（オフライン動作のため）
 // 開発環境でのエミュレーター接続（本番環境では削除）
-if (__DEV__) {
-  try {
-    // Firestore エミュレーターに接続
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    // Auth エミュレーターに接続
-    connectAuthEmulator(auth, 'http://localhost:9099');
-  } catch (error) {
-    // エミュレーターが既に接続されている場合はエラーを無視
-    console.log('Firebase emulators already connected or not available');
-  }
-}
+// if (__DEV__) {
+//   try {
+//     // Firestore エミュレーターに接続
+//     connectFirestoreEmulator(db, 'localhost', 8080);
+//     // Auth エミュレーターに接続
+//     connectAuthEmulator(auth, 'http://localhost:9099');
+//   } catch (error) {
+//     // エミュレーターが既に接続されている場合はエラーを無視
+//     console.log('Firebase emulators already connected or not available');
+//   }
+// }
 
 export default app;

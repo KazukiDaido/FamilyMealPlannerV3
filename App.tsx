@@ -82,17 +82,24 @@ function AppContent() {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  useEffect(() => {
-    // Firebase認証状態の監視
-    const unsubscribeAuth = AuthService.onAuthStateChanged((user) => {
-      setFirebaseUser(user);
-      setIsInitializing(false);
-      
-      if (user) {
-        // ユーザーがログインしている場合はリアルタイム同期を開始
-        dispatch(startRealtimeSync());
-      }
-    });
+      useEffect(() => {
+        // Firebase認証状態の監視（オフライン対応）
+        try {
+          const unsubscribeAuth = AuthService.onAuthStateChanged((user) => {
+            setFirebaseUser(user);
+            setIsInitializing(false);
+            
+            if (user) {
+              // ユーザーがログインしている場合はリアルタイム同期を開始
+              dispatch(startRealtimeSync());
+            }
+          });
+        } catch (error) {
+          console.log('Firebase認証監視に失敗、オフライン動作に切り替え');
+          setIsInitializing(false);
+          // オフライン動作の場合は認証済みとして扱う
+          setFirebaseUser({ uid: 'offline_user' } as User);
+        }
 
     // 通知権限の要求と初期設定
     const initializeNotifications = async () => {
