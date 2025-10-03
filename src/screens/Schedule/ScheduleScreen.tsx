@@ -198,8 +198,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
               style={styles.weekNavButton}
               onPress={goToPreviousWeek}
             >
-              <Ionicons name="chevron-back" size={20} color="#6B7C32" />
-              <Text style={styles.weekNavButtonText}>前の週</Text>
+              <Ionicons name="chevron-back" size={18} color="#888" />
             </TouchableOpacity>
             
             <Text style={styles.weekRangeText}>
@@ -210,8 +209,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
               style={styles.weekNavButton}
               onPress={goToNextWeek}
             >
-              <Text style={styles.weekNavButtonText}>次の週</Text>
-              <Ionicons name="chevron-forward" size={20} color="#6B7C32" />
+              <Ionicons name="chevron-forward" size={18} color="#888" />
             </TouchableOpacity>
           </View>
           
@@ -473,19 +471,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   weekNavButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F8F0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  weekNavButtonText: {
-    fontSize: 14,
-    color: '#6B7C32',
-    fontWeight: '500',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 32,
+    minHeight: 32,
   },
   weekRangeText: {
     fontSize: 16,
