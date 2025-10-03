@@ -129,6 +129,18 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
     </View>
   );
 
+  const renderJoinFamilyGroupButton = () => (
+    <View style={styles.joinFamilyGroupSection}>
+      <TouchableOpacity 
+        style={styles.joinFamilyGroupButton}
+        onPress={() => navigation.navigate('JoinFamilyGroup')}
+      >
+        <Ionicons name="people-outline" size={24} color="#007AFF" />
+        <Text style={styles.joinFamilyGroupButtonText}>他の家族グループに参加</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -187,6 +199,7 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
 
       <ScrollView style={styles.listContainer}>
         {!currentFamilyGroup && renderFamilyGroupActions()}
+        {currentFamilyGroup && renderJoinFamilyGroupButton()}
         <FlatList
           data={members}
           keyExtractor={(item) => item.id}
@@ -389,6 +402,30 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  joinFamilyGroupSection: {
+    marginBottom: 16,
+  },
+  joinFamilyGroupButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  joinFamilyGroupButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 

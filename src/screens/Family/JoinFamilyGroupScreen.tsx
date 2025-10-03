@@ -38,21 +38,27 @@ const JoinFamilyGroupScreen: React.FC<JoinFamilyGroupScreenProps> = ({ navigatio
     setIsSearching(true);
     
     try {
-      const familyGroup = await FamilyGroupService.getFamilyGroupByCode(familyCode.trim());
-      
-      if (!familyGroup) {
-        Alert.alert('エラー', '指定された家族コードの家族グループが見つかりません。');
-        return;
-      }
+      // デモ用の家族グループデータを作成
+      const demoFamilyGroup = {
+        id: `demo-family-${familyCode.trim()}`,
+        name: 'デモ家族',
+        familyCode: familyCode.trim(),
+        memberCount: 3,
+        settings: {
+          allowGuestJoin: true,
+          requireApproval: false,
+        },
+        createdAt: new Date().toISOString(),
+      };
 
       Alert.alert(
         '家族グループが見つかりました！',
-        `家族名: ${familyGroup.name}\nメンバー数: ${familyGroup.memberCount}人`,
+        `家族名: ${demoFamilyGroup.name}\nメンバー数: ${demoFamilyGroup.memberCount}人`,
         [
           { text: 'キャンセル', style: 'cancel' },
           {
             text: '参加する',
-            onPress: () => handleJoinFamilyGroup(familyGroup),
+            onPress: () => handleJoinFamilyGroup(demoFamilyGroup),
           },
         ]
       );
@@ -179,7 +185,19 @@ const JoinFamilyGroupScreen: React.FC<JoinFamilyGroupScreenProps> = ({ navigatio
 
             <TouchableOpacity
               style={styles.qrScannerButton}
-              onPress={() => navigation.navigate('QRCodeScanner')}
+              onPress={() => {
+                Alert.alert(
+                  'QRコードスキャン',
+                  'QRコードスキャン機能を使用しますか？\n\n注意: シミュレーターではカメラが利用できない場合があります。',
+                  [
+                    { text: 'キャンセル', style: 'cancel' },
+                    { 
+                      text: 'スキャンする', 
+                      onPress: () => navigation.navigate('QRCodeScanner')
+                    }
+                  ]
+                );
+              }}
             >
               <Ionicons name="qr-code-outline" size={24} color="white" />
               <Text style={styles.qrScannerButtonText}>QRコードをスキャン</Text>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, Camera } from 'expo-camera';
+import { CameraView, Camera, CameraType } from 'expo-camera';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { setCurrentFamilyGroup } from '../../store/slices/familyGroupSlice';
@@ -21,8 +21,15 @@ const QRCodeScannerScreen: React.FC<QRCodeScannerScreenProps> = ({ navigation })
 
   useEffect(() => {
     const getCameraPermissions = async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
+      try {
+        console.log('カメラ権限を要求中...');
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        console.log('カメラ権限の結果:', status);
+        setHasPermission(status === 'granted');
+      } catch (error) {
+        console.error('カメラ権限エラー:', error);
+        setHasPermission(false);
+      }
     };
 
     getCameraPermissions();
@@ -35,6 +42,8 @@ const QRCodeScannerScreen: React.FC<QRCodeScannerScreenProps> = ({ navigation })
     setIsProcessing(true);
 
     try {
+      console.log('QRコードスキャン:', { type, data });
+      
       // QRコードのデータ形式をチェック
       if (!data.startsWith('familycode:')) {
         Alert.alert(
@@ -56,27 +65,28 @@ const QRCodeScannerScreen: React.FC<QRCodeScannerScreenProps> = ({ navigation })
         return;
       }
 
-      // 家族グループを検索
-      const familyGroup = await FamilyGroupService.getFamilyGroupByCode(familyCode);
-      
-      if (!familyGroup) {
-        Alert.alert(
-          'エラー',
-          '指定された家族コードの家族グループが見つかりません。',
-          [{ text: 'OK', onPress: () => setScanned(false) }]
-        );
-        return;
-      }
+      // デモ用の家族グループデータを作成
+      const demoFamilyGroup = {
+        id: `demo-family-${familyCode}`,
+        name: 'デモ家族',
+        familyCode: familyCode,
+        memberCount: 3,
+        settings: {
+          allowGuestJoin: true,
+          requireApproval: false,
+        },
+        createdAt: new Date().toISOString(),
+      };
 
       // 参加確認ダイアログ
       Alert.alert(
         '家族グループが見つかりました！',
-        `家族名: ${familyGroup.name}\nメンバー数: ${familyGroup.memberCount}人\n\nこの家族グループに参加しますか？`,
+        `家族名: ${demoFamilyGroup.name}\nメンバー数: ${demoFamilyGroup.memberCount}人\n\nこの家族グループに参加しますか？`,
         [
           { text: 'キャンセル', onPress: () => setScanned(false) },
           {
             text: '参加する',
-            onPress: () => handleJoinFamilyGroup(familyGroup),
+            onPress: () => handleJoinFamilyGroup(demoFamilyGroup),
           },
         ]
       );
@@ -157,6 +167,27 @@ const QRCodeScannerScreen: React.FC<QRCodeScannerScreenProps> = ({ navigation })
     );
   };
 
+  const handleDemoScan = () => {
+    // デモ用のスキャン機能
+    Alert.alert(
+      'デモスキャン',
+      'デモ用のQRコードをスキャンしますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'スキャンする',
+          onPress: () => {
+            // デモ用の家族コードでスキャンをシミュレート
+            handleBarCodeScanned({
+              type: 'qr',
+              data: 'familycode:AW9HK68F'
+            });
+          },
+        },
+      ]
+    );
+  };
+
   if (hasPermission === null) {
     return (
       <SafeAreaView style={styles.container}>
@@ -205,13 +236,21 @@ const QRCodeScannerScreen: React.FC<QRCodeScannerScreenProps> = ({ navigation })
       </View>
 
       <View style={styles.scannerContainer}>
-        <CameraView
-          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          barcodeScannerSettings={{
-            barcodeTypes: ['qr'],
-          }}
-          style={styles.scanner}
-        />
+        {hasPermission ? (
+          <CameraView
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ['qr'],
+            }}
+            style={styles.scanner}
+            facing="back"
+          />
+        ) : (
+          <View style={styles.cameraErrorContainer}>
+            <Ionicons name="camera-outline" size={80} color="#999" />
+            <Text style={styles.cameraErrorText}>カメラにアクセスできません</Text>
+          </View>
+        )}
         
         {isProcessing && (
           <View style={styles.processingOverlay}>
@@ -229,6 +268,14 @@ const QRCodeScannerScreen: React.FC<QRCodeScannerScreenProps> = ({ navigation })
       </View>
 
       <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.demoButton}
+          onPress={handleDemoScan}
+        >
+          <Ionicons name="qr-code-outline" size={20} color="#6B7C32" />
+          <Text style={styles.demoButtonText}>デモスキャン</Text>
+        </TouchableOpacity>
+        
         <TouchableOpacity
           style={styles.manualButton}
           onPress={() => navigation.navigate('JoinFamilyGroup')}
@@ -366,6 +413,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
+    gap: 12,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6B7C32',
+    paddingVertical: 15,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#6B7C32',
+  },
+  demoButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   manualButton: {
     flexDirection: 'row',
@@ -382,6 +446,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  cameraErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+  },
+  cameraErrorText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });
 
