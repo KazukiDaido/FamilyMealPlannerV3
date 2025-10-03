@@ -10,7 +10,8 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { User } from 'firebase/auth';
 
 // Redux Store
-import { store, persistor, RootState } from './src/store';
+import { store, persistor, RootState, AppDispatch } from './src/store';
+import { loadCurrentFamilyGroup } from './src/store/slices/familyGroupSlice';
 
 // Screen imports
 import HomeScreen from './src/screens/Home/HomeScreen';
@@ -22,6 +23,7 @@ import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
 import EditFamilyMemberScreen from './src/screens/Family/EditFamilyMemberScreen';
 import CreateFamilyGroupScreen from './src/screens/Family/CreateFamilyGroupScreen';
 import JoinFamilyGroupScreen from './src/screens/Family/JoinFamilyGroupScreen';
+import QRCodeScannerScreen from './src/screens/Family/QRCodeScannerScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import NotificationSettingsScreen from './src/screens/Settings/NotificationSettingsScreen';
 import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
@@ -159,6 +161,7 @@ function FamilyStack() {
       <Stack.Screen name="EditFamilyMember" component={EditFamilyMemberScreen} />
       <Stack.Screen name="CreateFamilyGroup" component={CreateFamilyGroupScreen} />
       <Stack.Screen name="JoinFamilyGroup" component={JoinFamilyGroupScreen} />
+      <Stack.Screen name="QRCodeScanner" component={QRCodeScannerScreen} />
     </Stack.Navigator>
   );
 }
@@ -186,6 +189,9 @@ function AppContent() {
         // 初回起動かどうかをチェック
         const firstLaunch = await OnboardingService.isFirstLaunch();
         setIsFirstLaunch(firstLaunch);
+
+        // 家族グループの初期化
+        dispatch(loadCurrentFamilyGroup());
 
         // 通知権限の要求と初期設定
         const initializeNotifications = async () => {

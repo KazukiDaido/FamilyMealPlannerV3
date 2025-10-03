@@ -81,22 +81,23 @@ export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejec
   }
 );
 
-// 非同期アクション: 食事参加を取得（Firebase連携）
+// 非同期アクション: 食事参加を取得（ローカル動作）
 export const fetchMealAttendances = createAsyncThunk<MealAttendance[], void, { rejectValue: string }>(
   'family/fetchAttendances',
   async (_, { rejectWithValue }) => {
     try {
-      const attendances = await SyncService.syncMealAttendances();
-      return attendances;
+      // ローカル動作: ダミーデータを返す
+      console.log('ローカルデータを使用して食事参加を取得');
+      return dummyAttendances;
     } catch (err) {
-      // Firebase接続に失敗した場合はダミーデータを使用
-      console.warn('Firebase接続に失敗、ダミーデータを使用:', err);
+      // エラーの場合もダミーデータを使用
+      console.warn('食事参加取得に失敗、ダミーデータを使用:', err);
       return dummyAttendances;
     }
   }
 );
 
-// 非同期アクション: 食事参加を登録（Firebase連携）
+// 非同期アクション: 食事参加を登録（ローカル動作）
 export const registerMealAttendance = createAsyncThunk<
   MealAttendance,
   { date: string; mealType: MealType; attendees: string[]; registeredBy: string },
@@ -110,8 +111,8 @@ export const registerMealAttendance = createAsyncThunk<
         ...attendanceData,
       };
       
-      // Firebaseに保存
-      const attendanceId = await SyncService.saveMealAttendance(newAttendance);
+      // ローカル動作: IDを生成して返す
+      const attendanceId = `att-${Date.now()}`;
       
       return {
         id: attendanceId,
@@ -226,27 +227,16 @@ export const updateResponseSettings = createAsyncThunk<ResponseSettings, Respons
   }
 );
 
-// リアルタイム同期の開始
+// リアルタイム同期の開始（ローカル動作）
 export const startRealtimeSync = createAsyncThunk<void, void, { rejectValue: string }>(
   'family/startRealtimeSync',
   async (_, { dispatch, rejectWithValue }) => {
     try {
-      // 家族メンバーのリアルタイム監視
-      const unsubscribeMembers = SyncService.subscribeToFamilyMembers((members) => {
-        dispatch(setFamilyMembers(members));
-      });
-
-      // 食事参加データのリアルタイム監視
-      const unsubscribeAttendances = SyncService.subscribeToMealAttendances((attendances) => {
-        dispatch(setMealAttendances(attendances));
-      });
-
-      // 接続状態を更新
+      // ローカル動作: 接続状態のみ更新
       dispatch(setConnected(true));
       dispatch(setLastSyncTime(new Date().toISOString()));
-
-      // クリーンアップ関数を保存（実際の実装では適切に管理する）
-      return { unsubscribeMembers, unsubscribeAttendances };
+      
+      console.log('ローカル動作: リアルタイム同期を開始');
     } catch (err) {
       console.error('リアルタイム同期開始エラー:', err);
       return rejectWithValue('リアルタイム同期の開始に失敗しました。');

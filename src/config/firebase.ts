@@ -12,6 +12,9 @@ const firebaseConfig = {
   appId: "1:123456789012:web:abcdef1234567890"
 };
 
+// 開発用: ダミー設定が使用されている場合はローカル動作に切り替え
+const isDummyConfig = firebaseConfig.apiKey === "AIzaSyDemoKey-ReplaceWithYourActualKey";
+
 // Firebase アプリを初期化
 const app = initializeApp(firebaseConfig);
 
@@ -20,6 +23,9 @@ export const db = getFirestore(app);
 
 // Authentication を初期化
 export const auth = getAuth(app);
+
+// ダミー設定の場合はローカル動作フラグをエクスポート
+export { isDummyConfig };
 
 // Firebaseエミュレーターは無効化（オフライン動作のため）
 // 開発環境でのエミュレーター接続（本番環境では削除）

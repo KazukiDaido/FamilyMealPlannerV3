@@ -12,13 +12,19 @@ import {
   Timestamp,
   addDoc 
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, isDummyConfig } from '../config/firebase';
 import { FamilyGroup, FamilyGroupJoinRequest } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class FamilyGroupService {
-  // 6桁の家族コードを生成
+  // より複雑な家族コードを生成（8桁の英数字）
   static generateFamilyCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   }
 
   // 家族グループを作成
@@ -29,6 +35,28 @@ class FamilyGroupService {
   ): Promise<FamilyGroup> {
     try {
       const familyCode = this.generateFamilyCode();
+      
+      // ダミー設定の場合はローカルストレージに保存
+      if (isDummyConfig) {
+        const familyGroupData: FamilyGroup = {
+          id: `local_${Date.now()}`,
+          name,
+          familyCode,
+          createdBy,
+          createdAt: new Date().toISOString(),
+          memberCount: 1,
+          settings: {
+            allowGuestJoin: true,
+            requireApproval: false,
+            ...settings,
+          },
+        };
+
+        // ローカルストレージに保存
+        await AsyncStorage.setItem('currentFamilyGroup', JSON.stringify(familyGroupData));
+        console.log('ローカルモード: 家族グループを作成しました:', familyGroupData);
+        return familyGroupData;
+      }
       
       // 家族コードの重複チェック
       const existingGroup = await this.getFamilyGroupByCode(familyCode);

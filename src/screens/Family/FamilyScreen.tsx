@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchFamilyMembers, addFamilyMember, deleteFamilyMember } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
+import QRCodeShareModal from '../../components/QRCodeShareModal';
 
 interface FamilyScreenProps {
   navigation: any;
@@ -15,8 +16,17 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { members, isLoading, error } = useSelector((state: RootState) => state.family);
   const { currentFamilyGroup } = useSelector((state: RootState) => state.familyGroup);
+  const [showQRModal, setShowQRModal] = useState(false);
 
-  console.log('FamilyScreen: 現在の状態:', { members: members.length, isLoading, error });
+  console.log('FamilyScreen: 現在の状態:', { 
+    members: members.length, 
+    isLoading, 
+    error,
+    currentFamilyGroup: currentFamilyGroup ? {
+      name: currentFamilyGroup.name,
+      familyCode: currentFamilyGroup.familyCode
+    } : null
+  });
 
   useEffect(() => {
     console.log('FamilyScreen: 家族メンバーを取得中...');
@@ -156,9 +166,23 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={handleAddMember} style={styles.addButton}>
-          <Ionicons name="add" size={24} color="#6B7C32" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {currentFamilyGroup && (
+            <TouchableOpacity 
+              onPress={() => {
+                console.log('QRコードボタンがタップされました');
+                console.log('currentFamilyGroup:', currentFamilyGroup);
+                setShowQRModal(true);
+              }} 
+              style={styles.qrButton}
+            >
+              <Ionicons name="qr-code-outline" size={24} color="#6B7C32" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleAddMember} style={styles.addButton}>
+            <Ionicons name="add" size={24} color="#6B7C32" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.listContainer}>
@@ -172,6 +196,15 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         />
       </ScrollView>
+
+      {currentFamilyGroup && (
+        <QRCodeShareModal
+          visible={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          familyCode={currentFamilyGroup.familyCode}
+          familyName={currentFamilyGroup.name}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -240,6 +273,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  qrButton: {
+    padding: 4,
   },
   addButton: {
     padding: 4,

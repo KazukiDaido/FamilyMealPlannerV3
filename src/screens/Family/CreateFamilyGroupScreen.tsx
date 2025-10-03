@@ -25,17 +25,15 @@ const CreateFamilyGroupScreen: React.FC<CreateFamilyGroupScreenProps> = ({ navig
       return;
     }
 
-    if (!currentUser) {
-      Alert.alert('エラー', 'ユーザー情報が見つかりません。');
-      return;
-    }
-
     setIsCreating(true);
     
     try {
+      // ローカル動作: ダミーユーザーIDを使用
+      const userId = currentUser?.id || 'local-user-1';
+      
       const familyGroup = await FamilyGroupService.createFamilyGroup(
         familyName.trim(),
-        currentUser.id,
+        userId,
         {
           allowGuestJoin,
           requireApproval,
@@ -43,6 +41,7 @@ const CreateFamilyGroupScreen: React.FC<CreateFamilyGroupScreenProps> = ({ navig
       );
 
       // Redux stateを更新
+      console.log('CreateFamilyGroupScreen: 家族グループを作成しました:', familyGroup);
       dispatch(setCurrentFamilyGroup(familyGroup));
 
       Alert.alert(

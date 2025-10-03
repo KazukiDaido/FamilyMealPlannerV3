@@ -19,7 +19,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['user'], // ユーザー情報のみ永続化
+  whitelist: ['user', 'familyGroup'], // ユーザー情報と家族グループ情報を永続化
   // 食事データは毎回最新を取得するため永続化しない
 };
 
@@ -27,7 +27,7 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 // Store設定
 export const store = configureStore({
-  reducer: rootReducer, // 一時的に永続化を無効化
+  reducer: persistedReducer, // 永続化を有効化
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
@@ -36,7 +36,7 @@ export const store = configureStore({
     }),
 });
 
-// 永続化ストア（一時的に無効化）
+// 永続化ストア
 export const persistor = persistStore(store);
 
 // 型定義

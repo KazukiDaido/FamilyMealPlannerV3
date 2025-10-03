@@ -25,8 +25,13 @@ const JoinFamilyGroupScreen: React.FC<JoinFamilyGroupScreenProps> = ({ navigatio
       return;
     }
 
-    if (familyCode.length !== 6) {
-      Alert.alert('エラー', '家族コードは6桁の数字で入力してください。');
+    if (familyCode.length !== 8) {
+      Alert.alert('エラー', '家族コードは8桁の英数字で入力してください。');
+      return;
+    }
+
+    if (!/^[A-Z0-9]{8}$/.test(familyCode)) {
+      Alert.alert('エラー', '家族コードは大文字の英数字8桁で入力してください。');
       return;
     }
 
@@ -149,21 +154,36 @@ const JoinFamilyGroupScreen: React.FC<JoinFamilyGroupScreenProps> = ({ navigatio
             <Text style={styles.sectionTitle}>家族コードを入力</Text>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>6桁の家族コード</Text>
+              <Text style={styles.inputLabel}>8桁の家族コード</Text>
               <TextInput
                 style={styles.codeInput}
                 value={familyCode}
-                onChangeText={(text) => setFamilyCode(text.replace(/[^0-9]/g, ''))}
-                placeholder="123456"
+                onChangeText={(text) => setFamilyCode(text.replace(/[^A-Z0-9]/g, '').toUpperCase())}
+                placeholder="ABC12345"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
-                maxLength={6}
+                keyboardType="default"
+                maxLength={8}
                 textAlign="center"
+                autoCapitalize="characters"
               />
               <Text style={styles.inputHint}>
-                家族グループ作成者から教えてもらった6桁のコードを入力してください
+                家族グループ作成者から教えてもらった8桁の英数字コードを入力してください
               </Text>
             </View>
+
+            <View style={styles.orDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>または</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.qrScannerButton}
+              onPress={() => navigation.navigate('QRCodeScanner')}
+            >
+              <Ionicons name="qr-code-outline" size={24} color="white" />
+              <Text style={styles.qrScannerButtonText}>QRコードをスキャン</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.searchButton, isSearching && styles.searchButtonDisabled]}
@@ -378,6 +398,42 @@ const styles = StyleSheet.create({
   joinButtonText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dividerText: {
+    width: 60,
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  qrScannerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 15,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  qrScannerButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
   },

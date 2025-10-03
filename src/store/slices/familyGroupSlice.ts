@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { FamilyGroup, FamilyGroupJoinRequest } from '../../types';
 import FamilyGroupService from '../../services/familyGroupService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FamilyGroupState {
   currentFamilyGroup: FamilyGroup | null;
@@ -143,6 +144,25 @@ const familyGroupSlice = createSlice({
   reducers: {
     setCurrentFamilyGroup: (state, action: PayloadAction<FamilyGroup | null>) => {
       state.currentFamilyGroup = action.payload;
+      // ローカルストレージにも保存
+      if (action.payload) {
+        AsyncStorage.setItem('currentFamilyGroup', JSON.stringify(action.payload));
+      } else {
+        AsyncStorage.removeItem('currentFamilyGroup');
+      }
+    },
+    loadCurrentFamilyGroup: (state) => {
+      // ローカルストレージから家族グループを読み込み
+      AsyncStorage.getItem('currentFamilyGroup').then((data) => {
+        if (data) {
+          try {
+            const familyGroup = JSON.parse(data);
+            state.currentFamilyGroup = familyGroup;
+          } catch (error) {
+            console.error('ローカルストレージからの家族グループ読み込みエラー:', error);
+          }
+        }
+      });
     },
     clearError: (state) => {
       state.error = null;
@@ -247,6 +267,6 @@ const familyGroupSlice = createSlice({
 });
 
 // アクションをエクスポート
-export const { setCurrentFamilyGroup, clearError, clearJoinRequests } = familyGroupSlice.actions;
+export const { setCurrentFamilyGroup, loadCurrentFamilyGroup, clearError, clearJoinRequests } = familyGroupSlice.actions;
 
 export default familyGroupSlice.reducer;
