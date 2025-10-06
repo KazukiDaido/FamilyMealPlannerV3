@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { User } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Redux Store
 import { store, persistor, RootState, AppDispatch } from './src/store';
@@ -190,12 +191,18 @@ function AppContent() {
     }
   };
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Firebase認証を一時的に無効化
-        console.log('Firebase認証を無効化、オフライン動作');
-        setFirebaseUser(null);
+      useEffect(() => {
+        const initializeApp = async () => {
+          try {
+            // Firebase認証を有効化
+            console.log('Firebase認証を有効化');
+            
+            // Firebase認証状態の監視
+            const unsubscribe = onAuthStateChanged(auth, (user) => {
+              console.log('Firebase認証状態変更:', user ? 'ログイン済み' : '未ログイン');
+              setFirebaseUser(user);
+              setIsInitializing(false);
+            });
 
         // 初回起動かどうかをチェック
         const firstLaunch = await OnboardingService.isFirstLaunch();
@@ -230,9 +237,11 @@ function AppContent() {
 
     initializeApp();
 
-    // クリーンアップ（Firebase認証を無効化しているため不要）
+    // クリーンアップ（Firebase認証の監視を停止）
     return () => {
-      // Firebase認証を無効化しているため、クリーンアップは不要
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [dispatch]);
 

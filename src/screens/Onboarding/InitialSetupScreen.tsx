@@ -109,10 +109,10 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
       // Redux stateを更新
       dispatch(setCurrentFamilyGroup(familyGroup));
 
-      // リアルタイム同期を開始（エラーが発生しても続行）
+      // リアルタイム同期を開始
       try {
-        // ローカルモードではリアルタイム同期をスキップ
-        console.log('InitialSetupScreen: ローカルモードのためリアルタイム同期をスキップ');
+        dispatch(startRealtimeSync(familyGroup.id));
+        console.log('InitialSetupScreen: リアルタイム同期開始');
       } catch (syncError) {
         console.warn('InitialSetupScreen: リアルタイム同期開始エラー（続行）:', syncError);
       }
