@@ -17,8 +17,13 @@ const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, o
       return;
     }
 
-    if (familyId.length < 6) {
-      Alert.alert('エラー', '家族IDは6文字以上で入力してください。');
+    if (familyId.length !== 8) {
+      Alert.alert('エラー', '家族IDは8桁の英数字で入力してください。');
+      return;
+    }
+
+    if (!/^[A-Z0-9]{8}$/.test(familyId)) {
+      Alert.alert('エラー', '家族IDは大文字の英数字8桁で入力してください。');
       return;
     }
 
@@ -35,6 +40,23 @@ const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, o
             // 既存の家族に参加する場合は、ログイン画面に遷移
             // ここでは仮で初期設定画面に遷移
             navigation.navigate('InitialSetup');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleQRScan = () => {
+    Alert.alert(
+      'QRコードスキャン',
+      'QRコードスキャン機能を使用しますか？\n\n注意: シミュレーターではカメラが利用できない場合があります。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        { 
+          text: 'スキャンする', 
+          onPress: () => {
+            // QRコードスキャン画面に遷移
+            navigation.navigate('QRCodeScanner');
           }
         }
       ]
@@ -65,17 +87,17 @@ const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, o
         <View style={styles.inputSection}>
           <Text style={styles.sectionTitle}>家族ID</Text>
           <Text style={styles.inputDescription}>
-            家族の誰かから教えてもらった6桁の家族IDを入力してください
+            家族の誰かから教えてもらった8桁の家族IDを入力してください
           </Text>
           
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.familyIdInput}
-              placeholder="例: ABC123"
+              placeholder="例: ABC12345"
               value={familyId}
-              onChangeText={setFamilyId}
+              onChangeText={(text) => setFamilyId(text.replace(/[^A-Z0-9]/g, '').toUpperCase())}
               autoCapitalize="characters"
-              maxLength={10}
+              maxLength={8}
               autoCorrect={false}
             />
           </View>
@@ -90,6 +112,11 @@ const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, o
           <Text style={styles.dividerText}>または</Text>
           <View style={styles.dividerLine} />
         </View>
+
+        <TouchableOpacity style={styles.qrScanButton} onPress={handleQRScan}>
+          <Ionicons name="qr-code-outline" size={24} color="#007AFF" />
+          <Text style={styles.qrScanButtonText}>QRコードをスキャン</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.createFamilyButton} onPress={handleCreateNewFamily}>
           <Ionicons name="add-circle-outline" size={24} color="#6B7C32" />
@@ -233,6 +260,29 @@ const styles = StyleSheet.create({
   createFamilyButtonText: {
     fontSize: 16,
     color: '#6B7C32',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  qrScanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  qrScanButtonText: {
+    fontSize: 16,
+    color: '#007AFF',
     fontWeight: 'bold',
     marginLeft: 8,
   },

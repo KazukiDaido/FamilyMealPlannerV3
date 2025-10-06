@@ -13,7 +13,15 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { members, mealAttendances, isLoading, currentMemberId } = useSelector((state: RootState) => state.family);
+  const { 
+    members, 
+    mealAttendances, 
+    isLoading, 
+    currentMemberId,
+    isConnected,
+    lastSyncTime,
+    currentFamilyId
+  } = useSelector((state: RootState) => state.family);
   const [selectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
@@ -54,8 +62,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>今日の食事参加</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.headerTitle}>今日の食事参加</Text>
+          <View style={styles.syncStatus}>
+            <Ionicons 
+              name={isConnected ? "checkmark-circle" : "close-circle"} 
+              size={16} 
+              color={isConnected ? "#4CAF50" : "#F44336"} 
+            />
+            <Text style={[styles.syncStatusText, { color: isConnected ? "#4CAF50" : "#F44336" }]}>
+              {isConnected ? "リアルタイム同期中" : "オフライン"}
+            </Text>
+          </View>
+        </View>
         <Text style={styles.dateText}>{selectedDate}</Text>
+        {lastSyncTime && (
+          <Text style={styles.lastSyncText}>
+            最終同期: {new Date(lastSyncTime).toLocaleTimeString()}
+          </Text>
+        )}
       </View>
 
       {/* 個人回答ボタン */}
@@ -138,15 +163,35 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    flex: 1,
+  },
+  syncStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  syncStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   dateText: {
     fontSize: 16,
     color: '#666',
     marginTop: 4,
+  },
+  lastSyncText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
   content: {
     flex: 1,

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { FamilyMember, MealAttendance, MealType, PersonalResponse, ResponseSettings } from '../../types';
-// import SyncService from '../../services/syncService';
+import RealtimeSyncService, { RealtimeMealAttendance, RealtimeFamilyMember } from '../../services/realtimeSyncService';
 
 interface FamilyState {
   members: FamilyMember[];
@@ -11,6 +11,8 @@ interface FamilyState {
   error: string | null;
   isConnected: boolean; // ネットワーク接続状態
   lastSyncTime: string | null; // 最後の同期時刻
+  currentFamilyId: string | null; // 現在の家族グループID
+  realtimeListeners: { [key: string]: () => void }; // リアルタイムリスナー
 }
 
 const initialState: FamilyState = {
@@ -25,6 +27,8 @@ const initialState: FamilyState = {
   error: null,
   isConnected: false,
   lastSyncTime: null,
+  currentFamilyId: null,
+  realtimeListeners: {},
 };
 
 // ダミーデータ
@@ -227,19 +231,131 @@ export const updateResponseSettings = createAsyncThunk<ResponseSettings, Respons
   }
 );
 
-// リアルタイム同期の開始（ローカル動作）
-export const startRealtimeSync = createAsyncThunk<void, void, { rejectValue: string }>(
+// リアルタイム同期の開始
+export const startRealtimeSync = createAsyncThunk<void, string, { rejectValue: string }>(
   'family/startRealtimeSync',
-  async (_, { dispatch, rejectWithValue }) => {
+  async (familyId, { dispatch, rejectWithValue }) => {
     try {
-      // ローカル動作: 接続状態のみ更新
+      console.log('リアルタイム同期開始:', familyId);
+      
+      // 既存のリスナーをクリーンアップ
+      RealtimeSyncService.cleanup();
+      
+      // 家族メンバーのリアルタイムリスナーを設定
+      const membersUnsubscribe = RealtimeSyncService.subscribeToFamilyMembers(
+        familyId,
+        (members: RealtimeFamilyMember[]) => {
+          const familyMembers: FamilyMember[] = members.map(member => ({
+            id: member.id,
+            name: member.name,
+            role: member.role,
+            isProxy: member.isProxy
+          }));
+          dispatch(setFamilyMembers(familyMembers));
+        }
+      );
+
+      // 食事参加状況のリアルタイムリスナーを設定
+      const attendancesUnsubscribe = RealtimeSyncService.subscribeToMealAttendances(
+        familyId,
+        (attendances: RealtimeMealAttendance[]) => {
+          const mealAttendances: MealAttendance[] = attendances.map(attendance => ({
+            id: attendance.id,
+            date: attendance.date,
+            mealType: attendance.mealType,
+            attendees: attendance.attendance === 'attending' ? [attendance.memberId] : [],
+            registeredBy: attendance.memberId,
+            createdAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
+            responses: [{
+              id: `pr-${attendance.id}`,
+              familyMemberId: attendance.memberId,
+              date: attendance.date,
+              mealType: attendance.mealType,
+              willAttend: attendance.attendance === 'attending',
+              respondedAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
+            }]
+          }));
+          dispatch(setMealAttendances(mealAttendances));
+        }
+      );
+
+      // リスナーを保存（関数は直接保存しない）
+      dispatch(setRealtimeListeners({
+        members: 'active', // 関数の代わりに状態文字列を保存
+        attendances: 'active'
+      }));
+
       dispatch(setConnected(true));
       dispatch(setLastSyncTime(new Date().toISOString()));
+      dispatch(setCurrentFamilyId(familyId));
       
-      console.log('ローカル動作: リアルタイム同期を開始');
+      console.log('リアルタイム同期開始完了');
     } catch (err) {
       console.error('リアルタイム同期開始エラー:', err);
       return rejectWithValue('リアルタイム同期の開始に失敗しました。');
+    }
+  }
+);
+
+// リアルタイム同期の停止
+export const stopRealtimeSync = createAsyncThunk<void, void, { rejectValue: string }>(
+  'family/stopRealtimeSync',
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      console.log('リアルタイム同期停止');
+      
+      // リスナーをクリーンアップ
+      RealtimeSyncService.cleanup();
+      
+      dispatch(setConnected(false));
+      dispatch(setRealtimeListeners({}));
+      
+      console.log('リアルタイム同期停止完了');
+    } catch (err) {
+      console.error('リアルタイム同期停止エラー:', err);
+      return rejectWithValue('リアルタイム同期の停止に失敗しました。');
+    }
+  }
+);
+
+// 食事参加状況の送信（リアルタイム）
+export const submitRealtimeMealAttendance = createAsyncThunk<
+  void,
+  { date: string; mealType: MealType; attendance: 'attending' | 'not_attending' | 'pending' },
+  { rejectValue: string }
+>(
+  'family/submitRealtimeMealAttendance',
+  async (attendanceData, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { family: FamilyState };
+      const { currentMemberId, currentFamilyId } = state.family;
+      
+      if (!currentMemberId || !currentFamilyId) {
+        throw new Error('ログイン情報が見つかりません');
+      }
+
+      const member = state.family.members.find(m => m.id === currentMemberId);
+      if (!member) {
+        throw new Error('メンバー情報が見つかりません');
+      }
+
+      const realtimeAttendance: RealtimeMealAttendance = {
+        id: `att-${currentFamilyId}-${currentMemberId}-${attendanceData.date}-${attendanceData.mealType}`,
+        familyId: currentFamilyId,
+        memberId: currentMemberId,
+        memberName: member.name,
+        date: attendanceData.date,
+        mealType: attendanceData.mealType,
+        attendance: attendanceData.attendance,
+        timestamp: new Date(),
+        isProxy: member.isProxy
+      };
+
+      await RealtimeSyncService.saveMealAttendance(realtimeAttendance);
+      console.log('リアルタイム食事参加状況送信完了:', realtimeAttendance);
+    } catch (err) {
+      console.error('リアルタイム食事参加状況送信エラー:', err);
+      return rejectWithValue('食事参加状況の送信に失敗しました。');
     }
   }
 );
@@ -261,6 +377,12 @@ const familySlice = createSlice({
     },
     setLastSyncTime: (state, action: PayloadAction<string>) => {
       state.lastSyncTime = action.payload;
+    },
+    setCurrentFamilyId: (state, action: PayloadAction<string>) => {
+      state.currentFamilyId = action.payload;
+    },
+    setRealtimeListeners: (state, action: PayloadAction<{ [key: string]: () => void }>) => {
+      state.realtimeListeners = action.payload;
     },
     clearError: (state) => {
       state.error = null;
@@ -385,6 +507,8 @@ export const {
   setMealAttendances, 
   setConnected, 
   setLastSyncTime, 
+  setCurrentFamilyId,
+  setRealtimeListeners,
   clearError 
 } = familySlice.actions;
 

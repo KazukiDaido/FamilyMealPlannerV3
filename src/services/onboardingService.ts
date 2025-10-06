@@ -71,3 +71,4 @@ class OnboardingService {
 }
 
 export default OnboardingService;
+

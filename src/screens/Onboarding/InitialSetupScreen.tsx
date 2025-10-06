@@ -5,6 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { addFamilyMember, loginAsMember } from '../../store/slices/familySlice';
+import { setCurrentFamilyGroup } from '../../store/slices/familyGroupSlice';
+import { startRealtimeSync } from '../../store/slices/familySlice';
+import FamilyGroupService from '../../services/familyGroupService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddMemberModal from '../../components/AddMemberModal';
 
@@ -51,6 +54,8 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
   };
 
   const handleComplete = async () => {
+    console.log('InitialSetupScreen: 設定完了処理を開始');
+    
     if (!familyName.trim()) {
       Alert.alert('エラー', '家族名を入力してください。');
       return;
@@ -62,16 +67,24 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
       return;
     }
 
+    console.log('InitialSetupScreen: バリデーション完了', { familyName, validMembers });
+
     try {
       // 家族メンバーを追加
       let firstMemberId = '';
+      console.log('InitialSetupScreen: 家族メンバーを追加中...');
+      
       for (let i = 0; i < validMembers.length; i++) {
         const member = validMembers[i];
+        console.log(`InitialSetupScreen: メンバー${i + 1}を追加:`, member);
+        
         const result = await dispatch(addFamilyMember({
           name: member.name.trim(),
           role: 'parent', // 親/子の判定を削除
           isProxy: member.isProxy,
         })).unwrap();
+        
+        console.log('InitialSetupScreen: メンバー追加結果:', result);
         
         // 最初のメンバーをログイン状態にする
         if (i === 0) {
@@ -79,30 +92,64 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
         }
       }
 
+      console.log('InitialSetupScreen: 家族グループを作成中...', firstMemberId);
+      
+      // 家族グループを作成
+      const familyGroup = await FamilyGroupService.createFamilyGroup(
+        familyName.trim(),
+        firstMemberId,
+        {
+          allowGuestJoin: true,
+          requireApproval: false,
+        }
+      );
+
+      console.log('InitialSetupScreen: 家族グループ作成完了:', familyGroup);
+
+      // Redux stateを更新
+      dispatch(setCurrentFamilyGroup(familyGroup));
+
+      // リアルタイム同期を開始（エラーが発生しても続行）
+      try {
+        // ローカルモードではリアルタイム同期をスキップ
+        console.log('InitialSetupScreen: ローカルモードのためリアルタイム同期をスキップ');
+      } catch (syncError) {
+        console.warn('InitialSetupScreen: リアルタイム同期開始エラー（続行）:', syncError);
+      }
+
       // 初回起動フラグを設定
       await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
       await AsyncStorage.setItem('familyName', familyName.trim());
+      console.log('InitialSetupScreen: ローカルストレージに保存完了');
 
       // 最初のメンバーでログイン
       if (firstMemberId) {
+        console.log('InitialSetupScreen: 最初のメンバーでログイン中...', firstMemberId);
         await dispatch(loginAsMember(firstMemberId)).unwrap();
+        console.log('InitialSetupScreen: ログイン完了');
       }
+
+      console.log('InitialSetupScreen: セットアップ完了、アラート表示');
 
       Alert.alert(
         'セットアップ完了！',
-        `${familyName}の設定が完了しました。`,
+        `${familyName}の設定が完了しました。\n\n家族コード: ${familyGroup.familyCode}`,
         [
           {
             text: 'OK',
             onPress: () => {
+              console.log('InitialSetupScreen: アラートOKボタン押下、onComplete呼び出し');
               if (onComplete) {
                 onComplete();
+              } else {
+                console.warn('InitialSetupScreen: onCompleteが未定義');
               }
             },
           },
         ]
       );
     } catch (error: any) {
+      console.error('InitialSetupScreen: セットアップエラー:', error);
       Alert.alert('エラー', `セットアップに失敗しました: ${error.message || '不明なエラー'}`);
     }
   };

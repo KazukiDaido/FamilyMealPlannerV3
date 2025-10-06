@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { setCurrentFamilyGroup } from '../../store/slices/familyGroupSlice';
+import { startRealtimeSync } from '../../store/slices/familySlice';
 import FamilyGroupService from '../../services/familyGroupService';
 
 interface CreateFamilyGroupScreenProps {
@@ -44,9 +45,12 @@ const CreateFamilyGroupScreen: React.FC<CreateFamilyGroupScreenProps> = ({ navig
       console.log('CreateFamilyGroupScreen: 家族グループを作成しました:', familyGroup);
       dispatch(setCurrentFamilyGroup(familyGroup));
 
+      // リアルタイム同期を開始
+      dispatch(startRealtimeSync(familyGroup.id));
+
       Alert.alert(
         '家族グループを作成しました！',
-        `家族コード: ${familyGroup.familyCode}\n\nこのコードを家族メンバーに共有してください。`,
+        `家族コード: ${familyGroup.familyCode}\n\nリアルタイム同期が開始されました。\n家族メンバーが食事参加を回答すると、即座に反映されます。`,
         [
           {
             text: 'OK',

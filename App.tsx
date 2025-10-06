@@ -175,8 +175,19 @@ function AppContent() {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
 
   // オンボーディング完了を検知するための関数
-  const handleOnboardingComplete = () => {
-    setIsFirstLaunch(false);
+  const handleOnboardingComplete = async () => {
+    console.log('オンボーディング完了処理を開始');
+    try {
+      // オンボーディング完了フラグを設定
+      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      console.log('オンボーディング完了フラグを設定しました');
+      
+      // 状態を更新
+      setIsFirstLaunch(false);
+      console.log('isFirstLaunchをfalseに設定しました');
+    } catch (error) {
+      console.error('オンボーディング完了処理エラー:', error);
+    }
   };
 
   useEffect(() => {

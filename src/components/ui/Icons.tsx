@@ -23,3 +23,4 @@ export function SettingsIcon({ size = 24, color = '#000' }: IconProps) {
     <View style={{ width: size, height: size, backgroundColor: color, borderRadius: size / 2 }} />
   );
 }
+
