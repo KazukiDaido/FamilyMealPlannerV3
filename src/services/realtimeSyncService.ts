@@ -77,12 +77,21 @@ class RealtimeSyncService {
 
     try {
       const docRef = doc(db, 'familyMembers', member.id);
-      await setDoc(docRef, {
+      const docData = {
         ...member,
         lastActive: serverTimestamp(),
         updatedAt: serverTimestamp()
+      };
+      
+      console.log('💾 Firebaseに保存中:', { 
+        docId: docRef.id, 
+        familyId: member.familyId, 
+        memberName: member.name,
+        docData 
       });
-      console.log('Firestore保存完了:', member);
+      
+      await setDoc(docRef, docData);
+      console.log('✅ Firestore保存完了:', { docId: docRef.id, familyId: member.familyId, memberName: member.name });
     } catch (error) {
       console.error('家族メンバーの保存エラー:', error);
       throw error;
@@ -124,29 +133,47 @@ class RealtimeSyncService {
 
   // 家族メンバーの取得
   async getFamilyMembers(familyId: string): Promise<RealtimeFamilyMember[]> {
+    console.log('RealtimeSyncService.getFamilyMembers: familyId =', familyId);
+    console.log('RealtimeSyncService.getFamilyMembers: isDummyConfig =', isDummyConfig);
+    
     if (isDummyConfig) {
       // ローカルモード: AsyncStorageから取得
       const keys = await AsyncStorage.getAllKeys();
       const memberKeys = keys.filter(key => key.startsWith(`family_member_${familyId}`));
+      console.log('ローカルモード: memberKeys =', memberKeys);
       
       const members = await AsyncStorage.multiGet(memberKeys);
-      return members.map(([_, value]) => JSON.parse(value || '{}'));
+      const result = members.map(([_, value]) => JSON.parse(value || '{}'));
+      console.log('ローカルモード: 取得したメンバー =', result);
+      return result;
     }
 
     try {
+      console.log('🔍 Firebaseクエリ開始:', { familyId, collection: 'familyMembers' });
+      
+      // orderByを一時的に削除してインデックスエラーを回避
       const q = query(
         collection(db, 'familyMembers'),
-        where('familyId', '==', familyId),
-        orderBy('createdAt', 'asc')
+        where('familyId', '==', familyId)
       );
 
+      console.log('🔍 Firebaseクエリ実行中...');
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      
+      console.log('🔍 Firebaseクエリ完了:', {
+        docsCount: querySnapshot.docs.length,
+        docs: querySnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }))
+      });
+      
+      const members = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as RealtimeFamilyMember[];
+      
+      console.log('🔍 最終的なメンバー配列:', members);
+      return members;
     } catch (error) {
-      console.error('家族メンバーの取得エラー:', error);
+      console.error('❌ 家族メンバーの取得エラー:', error);
       throw error;
     }
   }
@@ -222,10 +249,10 @@ class RealtimeSyncService {
     }
 
     try {
+      // orderByを一時的に削除してインデックスエラーを回避
       const q = query(
         collection(db, 'familyMembers'),
-        where('familyId', '==', familyId),
-        orderBy('createdAt', 'asc')
+        where('familyId', '==', familyId)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {

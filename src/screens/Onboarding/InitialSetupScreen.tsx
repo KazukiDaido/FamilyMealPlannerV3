@@ -69,45 +69,45 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ navigation, onC
 
     console.log('InitialSetupScreen: バリデーション完了', { familyName, validMembers });
 
-    try {
-      // 家族メンバーを追加
-      let firstMemberId = '';
-      console.log('InitialSetupScreen: 家族メンバーを追加中...');
-      
-      for (let i = 0; i < validMembers.length; i++) {
-        const member = validMembers[i];
-        console.log(`InitialSetupScreen: メンバー${i + 1}を追加:`, member);
-        
-        const result = await dispatch(addFamilyMember({
-          name: member.name.trim(),
-          role: 'parent', // 親/子の判定を削除
-          isProxy: member.isProxy,
-        })).unwrap();
-        
-        console.log('InitialSetupScreen: メンバー追加結果:', result);
-        
-        // 最初のメンバーをログイン状態にする
-        if (i === 0) {
-          firstMemberId = result.id;
-        }
-      }
+        try {
+          // まず家族グループを作成（一時的なIDで）
+          const tempFamilyId = `temp_${Date.now()}`;
+          const familyGroup = await FamilyGroupService.createFamilyGroup(
+            familyName.trim(),
+            tempFamilyId, // 一時的なID
+            {
+              allowGuestJoin: true,
+              requireApproval: false,
+            }
+          );
 
-      console.log('InitialSetupScreen: 家族グループを作成中...', firstMemberId);
-      
-      // 家族グループを作成
-      const familyGroup = await FamilyGroupService.createFamilyGroup(
-        familyName.trim(),
-        firstMemberId,
-        {
-          allowGuestJoin: true,
-          requireApproval: false,
-        }
-      );
+          console.log('InitialSetupScreen: 家族グループ作成完了:', familyGroup);
 
-      console.log('InitialSetupScreen: 家族グループ作成完了:', familyGroup);
+          // Redux stateを更新
+          dispatch(setCurrentFamilyGroup(familyGroup));
 
-      // Redux stateを更新
-      dispatch(setCurrentFamilyGroup(familyGroup));
+          // 正しいfamilyIdで家族メンバーを追加
+          let firstMemberId = '';
+          console.log('InitialSetupScreen: 家族メンバーを追加中...');
+
+          for (let i = 0; i < validMembers.length; i++) {
+            const member = validMembers[i];
+            console.log(`InitialSetupScreen: メンバー${i + 1}を追加:`, member);
+
+            const result = await dispatch(addFamilyMember({
+              name: member.name.trim(),
+              role: 'parent', // 親/子の判定を削除
+              isProxy: member.isProxy,
+              familyId: familyGroup.id, // 正しいfamilyIdを設定
+            })).unwrap();
+
+            console.log('InitialSetupScreen: メンバー追加結果:', result);
+
+            // 最初のメンバーをログイン状態にする
+            if (i === 0) {
+              firstMemberId = result.id;
+            }
+          }
 
       // リアルタイム同期を開始
       try {

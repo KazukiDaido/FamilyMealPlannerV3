@@ -23,6 +23,7 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
     isLoading, 
     error,
     currentFamilyGroup: currentFamilyGroup ? {
+      id: currentFamilyGroup.id,
       name: currentFamilyGroup.name,
       familyCode: currentFamilyGroup.familyCode
     } : null

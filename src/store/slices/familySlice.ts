@@ -63,24 +63,41 @@ export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejec
   'family/fetchMembers',
   async (_, { rejectWithValue, getState }) => {
     try {
-      // Firebase接続を無効化、ローカルデータのみ使用
-      console.log('ローカルデータを使用して家族メンバーを取得');
+      // 現在の家族グループIDを取得
+      const state = getState() as { familyGroup: { currentFamilyGroup: { id: string } | null } };
+      const familyId = state.familyGroup.currentFamilyGroup?.id;
       
-      // 現在のRedux状態を取得
-      const state = getState() as { family: FamilyState };
-      const currentMembers = state.family.members;
-      
-      // 既存のメンバーがいればそれを使用、なければダミーデータを返す
-      if (currentMembers.length > 0) {
-        console.log('既存の家族メンバーを使用:', currentMembers);
-        return currentMembers;
-      } else {
-        console.log('ダミーデータを使用');
+      if (!familyId) {
+        console.log('家族グループが見つからないため、ダミーデータを使用');
         return dummyMembers;
       }
+
+      // Firebaseから家族メンバーを取得
+      console.log('fetchFamilyMembers: familyId =', familyId);
+      const realtimeMembers = await RealtimeSyncService.getFamilyMembers(familyId);
+      console.log('Firebaseから家族メンバーを取得:', realtimeMembers);
+      console.log('取得したメンバー数:', realtimeMembers.length);
+
+      // RealtimeFamilyMemberをFamilyMemberに変換
+      const familyMembers: FamilyMember[] = realtimeMembers.map(member => ({
+        id: member.id,
+        name: member.name,
+        role: member.role,
+        isProxy: member.isProxy,
+      }));
+
+      // メンバーがいない場合はダミーデータを返す
+      if (familyMembers.length === 0) {
+        console.log('Firebaseにメンバーが見つからないため、ダミーデータを使用');
+        return dummyMembers;
+      }
+
+      return familyMembers;
     } catch (err) {
       console.error('家族メンバー取得エラー:', err);
-      return rejectWithValue('家族メンバーの取得に失敗しました。');
+      // エラーの場合はダミーデータを返す
+      console.log('エラーのためダミーデータを使用');
+      return dummyMembers;
     }
   }
 );
@@ -132,15 +149,40 @@ export const registerMealAttendance = createAsyncThunk<
 // 非同期アクション: 家族メンバーを追加
 export const addFamilyMember = createAsyncThunk<FamilyMember, Omit<FamilyMember, 'id'>, { rejectValue: string }>(
   'family/addMember',
-  async (memberData, { rejectWithValue }) => {
+  async (memberData, { rejectWithValue, getState }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // 現在の家族グループIDを取得
+      const state = getState() as { familyGroup: { currentFamilyGroup: { id: string } | null } };
+      const familyId = state.familyGroup.currentFamilyGroup?.id;
+      
+      if (!familyId) {
+        return rejectWithValue('家族グループが見つかりません。');
+      }
+
+      // Firebaseに保存するためのメンバーデータを準備
+      const newMemberId = Date.now().toString();
       const newMember: FamilyMember = {
-        id: Date.now().toString(),
+        id: newMemberId,
         ...memberData,
       };
+
+      // RealtimeSyncServiceを使用してFirebaseに保存
+      const realtimeMember = {
+        id: newMemberId,
+        familyId: familyId,
+        name: memberData.name,
+        role: memberData.role,
+        isProxy: memberData.isProxy,
+        createdAt: new Date().toISOString(),
+        lastActive: new Date().toISOString(),
+      };
+
+      await RealtimeSyncService.saveFamilyMember(realtimeMember);
+      console.log('家族メンバーをFirebaseに保存完了:', realtimeMember);
+
       return newMember;
     } catch (err) {
+      console.error('家族メンバー追加エラー:', err);
       return rejectWithValue('家族メンバーの追加に失敗しました。');
     }
   }
@@ -149,12 +191,33 @@ export const addFamilyMember = createAsyncThunk<FamilyMember, Omit<FamilyMember,
 // 非同期アクション: 家族メンバーを更新
 export const updateFamilyMember = createAsyncThunk<FamilyMember, FamilyMember, { rejectValue: string }>(
   'family/updateMember',
-  async (memberData, { rejectWithValue }) => {
+  async (memberData, { rejectWithValue, getState }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      // 実際にはAPIにPUTリクエストを送信
+      // 現在の家族グループIDを取得
+      const state = getState() as { familyGroup: { currentFamilyGroup: { id: string } | null } };
+      const familyId = state.familyGroup.currentFamilyGroup?.id;
+      
+      if (!familyId) {
+        return rejectWithValue('家族グループが見つかりません。');
+      }
+
+      // RealtimeSyncServiceを使用してFirebaseに保存
+      const realtimeMember = {
+        id: memberData.id,
+        familyId: familyId,
+        name: memberData.name,
+        role: memberData.role,
+        isProxy: memberData.isProxy,
+        createdAt: new Date().toISOString(), // 実際には既存の値を保持すべき
+        lastActive: new Date().toISOString(),
+      };
+
+      await RealtimeSyncService.saveFamilyMember(realtimeMember);
+      console.log('家族メンバーをFirebaseで更新完了:', realtimeMember);
+
       return memberData;
     } catch (err) {
+      console.error('家族メンバー更新エラー:', err);
       return rejectWithValue('家族メンバーの更新に失敗しました。');
     }
   }
@@ -165,10 +228,19 @@ export const deleteFamilyMember = createAsyncThunk<string, string, { rejectValue
   'family/deleteMember',
   async (memberId, { rejectWithValue }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      // 実際にはAPIにDELETEリクエストを送信
+      // Firebaseから削除
+      if (!isDummyConfig) {
+        const { deleteDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('../../config/firebase');
+        await deleteDoc(doc(db, 'familyMembers', memberId));
+        console.log('家族メンバーをFirebaseから削除完了:', memberId);
+      } else {
+        console.log('ローカルモード: 家族メンバーの削除をシミュレート');
+      }
+
       return memberId;
     } catch (err) {
+      console.error('家族メンバー削除エラー:', err);
       return rejectWithValue('家族メンバーの削除に失敗しました。');
     }
   }
@@ -255,34 +327,34 @@ export const startRealtimeSync = createAsyncThunk<void, string, { rejectValue: s
         }
       );
 
-      // 食事参加状況のリアルタイムリスナーを設定
-      const attendancesUnsubscribe = RealtimeSyncService.subscribeToMealAttendances(
-        familyId,
-        (attendances: RealtimeMealAttendance[]) => {
-          const mealAttendances: MealAttendance[] = attendances.map(attendance => ({
-            id: attendance.id,
-            date: attendance.date,
-            mealType: attendance.mealType,
-            attendees: attendance.attendance === 'attending' ? [attendance.memberId] : [],
-            registeredBy: attendance.memberId,
-            createdAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
-            responses: [{
-              id: `pr-${attendance.id}`,
-              familyMemberId: attendance.memberId,
-              date: attendance.date,
-              mealType: attendance.mealType,
-              willAttend: attendance.attendance === 'attending',
-              respondedAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
-            }]
-          }));
-          dispatch(setMealAttendances(mealAttendances));
-        }
-      );
+      // 食事参加状況のリアルタイムリスナーを設定（一時的に無効化）
+      // const attendancesUnsubscribe = RealtimeSyncService.subscribeToMealAttendances(
+      //   familyId,
+      //   (attendances: RealtimeMealAttendance[]) => {
+      //     const mealAttendances: MealAttendance[] = attendances.map(attendance => ({
+      //       id: attendance.id,
+      //       date: attendance.date,
+      //       mealType: attendance.mealType,
+      //       attendees: attendance.attendance === 'attending' ? [attendance.memberId] : [],
+      //       registeredBy: attendance.memberId,
+      //       createdAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
+      //       responses: [{
+      //         id: `pr-${attendance.id}`,
+      //         familyMemberId: attendance.memberId,
+      //         date: attendance.date,
+      //         mealType: attendance.mealType,
+      //         willAttend: attendance.attendance === 'attending',
+      //         respondedAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
+      //       }]
+      //     }));
+      //     dispatch(setMealAttendances(mealAttendances));
+      //   }
+      // );
 
       // リスナーを保存（関数は直接保存しない）
       dispatch(setRealtimeListeners({
         members: 'active', // 関数の代わりに状態文字列を保存
-        attendances: 'active'
+        attendances: 'inactive' // mealAttendancesリスナーは無効化
       }));
 
       dispatch(setConnected(true));
