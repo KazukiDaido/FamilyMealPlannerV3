@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { fetchMealAttendances } from '../../store/slices/familySlice';
+import { fetchMealAttendances, startRealtimeSync } from '../../store/slices/familySlice';
 import { MealAttendance, MealType, FamilyMember } from '../../types';
 
 interface ScheduleScreenProps {
@@ -19,8 +19,29 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   const [showMonthModal, setShowMonthModal] = useState<boolean>(false);
 
   useEffect(() => {
-    dispatch(fetchMealAttendances());
+    console.log('スケジュール画面: useEffect開始');
+    dispatch(fetchMealAttendances({}));
+    
+    // リアルタイム同期を開始（家族グループが存在する場合）
+    const state = require('../../store').store.getState();
+    const currentFamilyGroup = state.familyGroup.currentFamilyGroup;
+    if (currentFamilyGroup?.id) {
+      console.log('スケジュール画面: リアルタイム同期を開始:', currentFamilyGroup.id);
+      dispatch(startRealtimeSync(currentFamilyGroup.id));
+    }
   }, [dispatch]);
+
+  // 食事参加データの変更を監視
+  useEffect(() => {
+    console.log('スケジュール画面: 食事参加データ更新:', {
+      count: mealAttendances.length,
+      data: mealAttendances.map(att => ({
+        date: att.date,
+        mealType: att.mealType,
+        attendees: att.attendees.length
+      }))
+    });
+  }, [mealAttendances]);
 
   // カレンダー用のマーキングデータを作成（シンプル版）
   const getMarkedDates = () => {
@@ -66,7 +87,18 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
 
   // 選択された日付の食事参加状況を取得
   const getSelectedDateAttendances = () => {
-    return mealAttendances.filter(attendance => attendance.date === selectedDate);
+    const filtered = mealAttendances.filter(attendance => attendance.date === selectedDate);
+    console.log('スケジュール画面: 選択日付の食事参加データ:', {
+      selectedDate,
+      filteredCount: filtered.length,
+      allCount: mealAttendances.length,
+      filtered: filtered.map(att => ({
+        mealType: att.mealType,
+        attendees: att.attendees.length,
+        attendeesList: att.attendees
+      }))
+    });
+    return filtered;
   };
 
   // 家族メンバーの参加状況を取得
@@ -265,7 +297,23 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
           ) : (
             <View style={styles.mealDetails}>
               {mealTypes.map((meal) => {
-                const attendance = selectedDateAttendances.find(att => att.mealType === meal.type);
+                // 同じ食事タイプの最新データを取得（createdAtでソート）
+                const mealAttendances = selectedDateAttendances.filter(att => att.mealType === meal.type);
+                const attendance = mealAttendances.length > 0 
+                  ? mealAttendances.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+                  : null;
+                
+                console.log('スケジュール画面: 食事タイプ別データ:', {
+                  mealType: meal.type,
+                  hasAttendance: !!attendance,
+                  totalRecords: mealAttendances.length,
+                  latestAttendance: attendance ? {
+                    attendees: attendance.attendees,
+                    attendeesCount: attendance.attendees.length,
+                    createdAt: attendance.createdAt
+                  } : null
+                });
+                
                 return (
                   <View key={meal.type} style={styles.mealDetailCard}>
                     <View style={styles.mealDetailHeader}>
@@ -521,7 +569,8 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#6B7C32',
+    marginTop: 2,
   },
   selectedMealIndicator: {
     backgroundColor: 'white',

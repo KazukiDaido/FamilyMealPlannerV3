@@ -7,17 +7,19 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import { User } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
+import { auth } from './src/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Redux Store
 import { store, persistor, RootState, AppDispatch } from './src/store';
 import { loadCurrentFamilyGroup } from './src/store/slices/familyGroupSlice';
+import { startRealtimeSync } from './src/store/slices/familySlice';
 
 // Screen imports
 import HomeScreen from './src/screens/Home/HomeScreen';
 import RegisterMealScreen from './src/screens/Home/RegisterMealScreen';
-import PersonalResponseScreen from './src/screens/Home/PersonalResponseScreen';
+import PersonalResponseScreen from './src/screens/PersonalResponse/PersonalResponseScreen';
 import FamilyMemberLoginScreen from './src/screens/Auth/FamilyMemberLoginScreen';
 import FamilyScreen from './src/screens/Family/FamilyScreen';
 import AddFamilyMemberScreen from './src/screens/Family/AddFamilyMemberScreen';
@@ -210,6 +212,14 @@ function AppContent() {
 
         // 家族グループの初期化
         dispatch(loadCurrentFamilyGroup());
+
+        // リアルタイム同期の開始（家族グループが存在する場合）
+        const state = store.getState();
+        const currentFamilyGroup = state.familyGroup.currentFamilyGroup;
+        if (currentFamilyGroup?.id) {
+          console.log('リアルタイム同期を開始:', currentFamilyGroup.id);
+          dispatch(startRealtimeSync(currentFamilyGroup.id));
+        }
 
         // 通知権限の要求と初期設定
         const initializeNotifications = async () => {

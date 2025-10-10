@@ -10,3 +10,4 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   return <View style={{ flex: 1 }}>{children}</View>;
 }
 
+

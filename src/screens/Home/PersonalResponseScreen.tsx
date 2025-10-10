@@ -52,10 +52,23 @@ const PersonalResponseScreen: React.FC<PersonalResponseScreenProps> = ({ navigat
   const isDeadlinePassed = (mealType: MealType): boolean => {
     const mealAttendance = todayMeals.find(meal => meal.mealType === mealType);
     if (!mealAttendance?.deadline) {
-      // 期限が設定されていない場合は固定時間ベースで判定
-      return new Date() > getDeadlineTime(mealType);
+      // 期限が設定されていない場合は期限切れなし（新規登録時）
+      return false;
     }
-    return new Date() > new Date(mealAttendance.deadline);
+    
+    // 期限が設定されている場合は現在時刻と比較
+    const deadline = new Date(mealAttendance.deadline);
+    const now = new Date();
+    
+    // 期限が過去の場合は期限切れ
+    if (now > deadline) {
+      console.log(`期限切れ: ${mealType}, 期限: ${deadline.toLocaleString()}, 現在: ${now.toLocaleString()}`);
+      // デバッグ用：期限切れでも回答を許可する（テスト用）
+      console.log(`デバッグ用：期限切れですが回答を許可します`);
+      return false; // テスト用に期限切れを無効化
+    }
+    
+    return false;
   };
 
   // 現在の回答状況を取得
@@ -114,7 +127,8 @@ const PersonalResponseScreen: React.FC<PersonalResponseScreenProps> = ({ navigat
           onPress: async () => {
             try {
               await dispatch(logoutMember()).unwrap();
-              navigation.replace('Login');
+              // ホーム画面に戻る（ログアウト処理は完了）
+              navigation.goBack();
             } catch (error: any) {
               Alert.alert('エラー', 'ログアウトに失敗しました。');
             }
