@@ -27,7 +27,11 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   const [showMonthModal, setShowMonthModal] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log('スケジュール画面: useEffect開始');
+    console.log('スケジュール画面: useEffect開始', { 
+      currentMemberId, 
+      currentFamilyId,
+      membersCount: members.length 
+    });
     dispatch(fetchFamilyMembers());
     dispatch(fetchMealAttendances({ date: selectedDate }));
     
@@ -110,9 +114,41 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     return filtered;
   };
 
+  // 代理登録権限をチェックする関数
+  const canToggleMemberAttendance = (memberId: string): boolean => {
+    console.log('権限チェック:', { currentMemberId, memberId, members: members.length });
+    
+    if (!currentMemberId) {
+      console.log('警告: currentMemberId が設定されていません');
+      return false;
+    }
+    
+    // 自分の分は常に操作可能
+    if (memberId === currentMemberId) {
+      console.log('自分の分なので操作可能');
+      return true;
+    }
+    
+    // 現在のユーザーの代理登録権限をチェック
+    const currentMember = members.find(member => member.id === currentMemberId);
+    console.log('現在のメンバー:', currentMember);
+    const hasProxy = currentMember?.isProxy === true;
+    console.log('代理登録権限:', hasProxy);
+    return hasProxy;
+  };
+
   // 家族メンバーの参加状態を切り替える
   const toggleMemberAttendance = async (mealType: MealType, memberId: string) => {
     if (!currentMemberId) return;
+    
+    // 代理登録権限をチェック
+    if (!canToggleMemberAttendance(memberId)) {
+      Alert.alert(
+        '権限がありません',
+        '他の家族メンバーの参加状態を変更する権限がありません。'
+      );
+      return;
+    }
 
     try {
       const existingAttendance = mealAttendances.find(
@@ -408,14 +444,16 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
                           <TouchableOpacity
                             style={[
                               styles.toggleSwitch,
-                              isAttending && styles.toggleSwitchActive
+                              isAttending && styles.toggleSwitchActive,
+                              !canToggleMemberAttendance(member.id) && styles.toggleSwitchDisabled
                             ]}
                             onPress={() => toggleMemberAttendance(meal.type, member.id)}
-                            disabled={!currentMemberId}
+                            disabled={!currentMemberId || !canToggleMemberAttendance(member.id)}
                           >
                             <View style={[
                               styles.toggleThumb,
-                              isAttending && styles.toggleThumbActive
+                              isAttending && styles.toggleThumbActive,
+                              !canToggleMemberAttendance(member.id) && styles.toggleThumbDisabled
                             ]} />
                           </TouchableOpacity>
                         </View>
@@ -810,6 +848,10 @@ const styles = StyleSheet.create({
   toggleSwitchActive: {
     backgroundColor: '#6B7C32',
   },
+  toggleSwitchDisabled: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.5,
+  },
   toggleThumb: {
     width: 24,
     height: 24,
@@ -824,6 +866,10 @@ const styles = StyleSheet.create({
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
+  },
+  toggleThumbDisabled: {
+    backgroundColor: '#e0e0e0',
+    opacity: 0.5,
   },
 });
 
