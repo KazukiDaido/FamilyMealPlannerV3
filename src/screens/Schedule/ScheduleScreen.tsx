@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { fetchMealAttendances, startRealtimeSync } from '../../store/slices/familySlice';
+import { fetchMealAttendances, startRealtimeSync, saveMealAttendance, fetchFamilyMembers } from '../../store/slices/familySlice';
 import { MealAttendance, MealType, FamilyMember } from '../../types';
 
 interface ScheduleScreenProps {
@@ -14,13 +14,22 @@ interface ScheduleScreenProps {
 
 const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { mealAttendances, members, isLoading } = useSelector((state: RootState) => state.family);
+  const { 
+    mealAttendances, 
+    members, 
+    isLoading,
+    currentMemberId,
+    isConnected,
+    lastSyncTime,
+    currentFamilyId
+  } = useSelector((state: RootState) => state.family);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [showMonthModal, setShowMonthModal] = useState<boolean>(false);
 
   useEffect(() => {
     console.log('スケジュール画面: useEffect開始');
-    dispatch(fetchMealAttendances({}));
+    dispatch(fetchFamilyMembers());
+    dispatch(fetchMealAttendances({ date: selectedDate }));
     
     // リアルタイム同期を開始（家族グループが存在する場合）
     const state = require('../../store').store.getState();
@@ -29,7 +38,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       console.log('スケジュール画面: リアルタイム同期を開始:', currentFamilyGroup.id);
       dispatch(startRealtimeSync(currentFamilyGroup.id));
     }
-  }, [dispatch]);
+  }, [dispatch, selectedDate]);
 
   // 食事参加データの変更を監視
   useEffect(() => {
@@ -101,12 +110,55 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     return filtered;
   };
 
-  // 家族メンバーの参加状況を取得
-  const getMemberAttendanceStatus = (memberId: string, mealType: MealType) => {
-    const attendance = mealAttendances.find(
-      att => att.date === selectedDate && att.mealType === mealType
-    );
-    return attendance ? attendance.attendees.includes(memberId) : false;
+  // 家族メンバーの参加状態を切り替える
+  const toggleMemberAttendance = async (mealType: MealType, memberId: string) => {
+    if (!currentMemberId) return;
+
+    try {
+      const existingAttendance = mealAttendances.find(
+        att => att.date === selectedDate && att.mealType === mealType
+      );
+      
+      let newAttendees: string[];
+      
+      if (existingAttendance) {
+        // 既存の参加データがある場合
+        const isCurrentlyAttending = existingAttendance.attendees.includes(memberId);
+        newAttendees = isCurrentlyAttending
+          ? existingAttendance.attendees.filter(id => id !== memberId)
+          : [...existingAttendance.attendees, memberId];
+        
+        // 既存のデータを更新
+        const updatedAttendance: MealAttendance = {
+          ...existingAttendance,
+          attendees: newAttendees,
+          registeredBy: currentMemberId,
+        };
+        
+        dispatch(saveMealAttendance(updatedAttendance));
+      } else {
+        // 新しい参加データを作成
+        newAttendees = [memberId];
+        const deadline = new Date();
+        deadline.setMinutes(deadline.getMinutes() + 30); // 30分後を期限とする
+        
+        const newAttendance: MealAttendance = {
+          id: `meal_${Date.now()}_${mealType}`,
+          date: selectedDate,
+          mealType,
+          attendees: newAttendees,
+          registeredBy: currentMemberId,
+          createdAt: new Date().toISOString(),
+          deadline: deadline.toISOString(),
+          isLocked: false,
+        };
+        
+        dispatch(saveMealAttendance(newAttendance));
+      }
+    } catch (error) {
+      console.error('参加状態の切り替えエラー:', error);
+      Alert.alert('エラー', '参加状態の更新に失敗しました');
+    }
   };
 
 
@@ -198,7 +250,29 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>食事スケジュール</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.headerTitle}>食事スケジュール</Text>
+          <View style={styles.syncStatus}>
+            <Ionicons
+              name={isConnected ? 'cloud-done' : 'cloud-offline'}
+              size={16}
+              color={isConnected ? '#28a745' : '#dc3545'}
+            />
+            <Text
+              style={[
+                styles.syncStatusText,
+                { color: isConnected ? '#28a745' : '#dc3545' },
+              ]}
+            >
+              {isConnected ? 'リアルタイム同期中' : 'オフライン'}
+            </Text>
+          </View>
+        </View>
+        {lastSyncTime && (
+          <Text style={styles.lastSyncText}>
+            最終同期: {new Date(lastSyncTime).toLocaleTimeString()}
+          </Text>
+        )}
       </View>
 
       <ScrollView style={styles.content}>
@@ -272,7 +346,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
                     styles.weekDayNumber,
                     isSelected && styles.selectedWeekDayText
                   ]}>{dayNumber}</Text>
-                  {hasMeals && (
+                  {isToday && (
                     <View style={[
                       styles.mealIndicator,
                       isSelected && styles.selectedMealIndicator
@@ -284,67 +358,74 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* 選択された日付の詳細 */}
+        {/* 選択された日付の詳細 + 食事参加編集 */}
         <View style={styles.detailSection}>
           <Text style={styles.sectionTitle}>
-            {formatDate(selectedDate)}の食事参加状況
+            {formatDate(selectedDate)}の食事参加
           </Text>
           
-          {selectedDateAttendances.length === 0 ? (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>この日の食事参加データはありません</Text>
-            </View>
-          ) : (
-            <View style={styles.mealDetails}>
-              {mealTypes.map((meal) => {
-                // 同じ食事タイプの最新データを取得（createdAtでソート）
-                const mealAttendances = selectedDateAttendances.filter(att => att.mealType === meal.type);
-                const attendance = mealAttendances.length > 0 
-                  ? mealAttendances.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-                  : null;
-                
-                console.log('スケジュール画面: 食事タイプ別データ:', {
-                  mealType: meal.type,
-                  hasAttendance: !!attendance,
-                  totalRecords: mealAttendances.length,
-                  latestAttendance: attendance ? {
-                    attendees: attendance.attendees,
-                    attendeesCount: attendance.attendees.length,
-                    createdAt: attendance.createdAt
-                  } : null
-                });
-                
-                return (
-                  <View key={meal.type} style={styles.mealDetailCard}>
-                    <View style={styles.mealDetailHeader}>
-                      <Ionicons name={meal.icon as any} size={20} color={meal.color} />
-                      <Text style={styles.mealDetailTitle}>{meal.label}</Text>
-                    </View>
-                    
-                    {attendance ? (
-                      <View style={styles.attendeesList}>
-                        {members.map((member) => {
-                          const isAttending = attendance.attendees.includes(member.id);
-                          return (
-                            <View key={member.id} style={styles.attendeeItem}>
-                              <Text style={styles.attendeeName}>{member.name}</Text>
-                              <Ionicons
-                                name={isAttending ? 'checkmark-circle' : 'close-circle'}
-                                size={16}
-                                color={isAttending ? '#34C759' : '#FF3B30'}
-                              />
-                            </View>
-                          );
-                        })}
-                      </View>
-                    ) : (
-                      <Text style={styles.noAttendanceText}>参加データなし</Text>
-                    )}
+          <View style={styles.mealDetails}>
+            {mealTypes.map((meal) => {
+              // 同じ食事タイプの最新データを取得（createdAtでソート）
+              const mealAttendancesList = selectedDateAttendances.filter(att => att.mealType === meal.type);
+              const attendance = mealAttendancesList.length > 0 
+                ? mealAttendancesList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+                : null;
+              
+              const attendingMembers = attendance ? attendance.attendees : [];
+              
+              return (
+                <View key={meal.type} style={styles.mealCard}>
+                  <View style={styles.mealHeader}>
+                    <Ionicons name={meal.icon as any} size={22} color={meal.color} />
+                    <Text style={styles.mealTitle}>{meal.label}</Text>
                   </View>
-                );
-              })}
-            </View>
-          )}
+                  
+                  <View style={styles.membersContainer}>
+                    {members.map((member) => {
+                      const isAttending = attendingMembers.includes(member.id);
+                      return (
+                        <View key={member.id} style={styles.memberRow}>
+                          <View style={styles.memberInfo}>
+                            <View style={[
+                              styles.memberAvatar,
+                              isAttending && styles.memberAvatarAttending
+                            ]}>
+                              <Text style={[
+                                styles.memberAvatarText,
+                                isAttending && styles.memberAvatarTextAttending
+                              ]}>
+                                {member.name.charAt(0)}
+                              </Text>
+                            </View>
+                            <Text style={[
+                              styles.memberName,
+                              isAttending && styles.memberNameAttending
+                            ]}>
+                              {member.name}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={[
+                              styles.toggleSwitch,
+                              isAttending && styles.toggleSwitchActive
+                            ]}
+                            onPress={() => toggleMemberAttendance(meal.type, member.id)}
+                            disabled={!currentMemberId}
+                          >
+                            <View style={[
+                              styles.toggleThumb,
+                              isAttending && styles.toggleThumbActive
+                            ]} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </View>
       </ScrollView>
 
@@ -424,16 +505,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    marginBottom: 4,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    flex: 1,
+  },
+  syncStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  syncStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  lastSyncText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
   content: {
     flex: 1,
@@ -629,41 +728,102 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   mealDetails: {
-    gap: 15,
+    gap: 10,
   },
-  mealDetailCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
+  mealCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
     padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  mealDetailHeader: {
+  mealHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  mealDetailTitle: {
+  mealTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginLeft: 8,
+    flex: 1,
   },
-  attendeesList: {
-    gap: 8,
+  membersContainer: {
+    paddingVertical: 8,
   },
-  attendeeItem: {
+  memberRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  attendeeName: {
-    fontSize: 14,
-    color: '#333',
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  noAttendanceText: {
+  memberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  memberAvatarAttending: {
+    backgroundColor: '#6B7C32',
+  },
+  memberAvatarText: {
     fontSize: 14,
+    fontWeight: 'bold',
     color: '#666',
-    fontStyle: 'italic',
+  },
+  memberAvatarTextAttending: {
+    color: 'white',
+  },
+  memberName: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  memberNameAttending: {
+    color: '#6B7C32',
+    fontWeight: '600',
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ddd',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#6B7C32',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+    alignSelf: 'flex-start',
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
   },
 });
 

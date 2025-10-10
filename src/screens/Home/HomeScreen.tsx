@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { fetchFamilyMembers, fetchMealAttendances } from '../../store/slices/familySlice';
+import { fetchFamilyMembers, fetchMealAttendances, saveMealAttendance } from '../../store/slices/familySlice';
 import { FamilyMember, MealAttendance, MealType } from '../../types';
 
 interface HomeScreenProps {
@@ -48,6 +48,56 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const getAttendeeNames = (attendees: string[]) => {
     return attendees.map(id => members.find(member => member.id === id)?.name || '不明').join(', ');
+  };
+
+  // メンバーの参加状態を切り替える
+  const toggleMemberAttendance = async (mealType: MealType, memberId: string) => {
+    if (!currentMemberId) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const existingAttendance = getAttendanceForMeal(mealType);
+      
+      let newAttendees: string[];
+      
+      if (existingAttendance) {
+        // 既存の参加データがある場合
+        const isCurrentlyAttending = existingAttendance.attendees.includes(memberId);
+        newAttendees = isCurrentlyAttending
+          ? existingAttendance.attendees.filter(id => id !== memberId)
+          : [...existingAttendance.attendees, memberId];
+        
+        // 既存のデータを更新
+        const updatedAttendance: MealAttendance = {
+          ...existingAttendance,
+          attendees: newAttendees,
+          registeredBy: currentMemberId,
+        };
+        
+        dispatch(saveMealAttendance(updatedAttendance));
+      } else {
+        // 新しい参加データを作成
+        newAttendees = [memberId];
+        const deadline = new Date();
+        deadline.setMinutes(deadline.getMinutes() + 30); // 30分後を期限とする
+        
+        const newAttendance: MealAttendance = {
+          id: `meal_${Date.now()}_${mealType}`,
+          date: today,
+          mealType,
+          attendees: newAttendees,
+          registeredBy: currentMemberId,
+          createdAt: new Date().toISOString(),
+          deadline: deadline.toISOString(),
+          isLocked: false,
+        };
+        
+        dispatch(saveMealAttendance(newAttendance));
+      }
+    } catch (error) {
+      console.error('参加状態の切り替えエラー:', error);
+      Alert.alert('エラー', '参加状態の更新に失敗しました');
+    }
   };
 
 
@@ -94,45 +144,62 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <ScrollView style={styles.content}>
         {mealTypes.map(({ type, label, icon }) => {
           const attendance = getAttendanceForMeal(type);
-          const attendeeNames = attendance ? getAttendeeNames(attendance.attendees) : '';
+          const attendingMembers = attendance ? attendance.attendees : [];
 
           return (
             <View key={type} style={styles.mealCard}>
               <View style={styles.mealHeader}>
-                <Ionicons name={icon as any} size={24} color="#6B7C32" />
+                <Ionicons name={icon as any} size={22} color="#6B7C32" />
                 <Text style={styles.mealTitle}>{label}</Text>
               </View>
 
-              {attendance ? (
-                <View style={styles.attendanceInfo}>
-                  <Text style={styles.attendeeText}>参加者: {attendeeNames}</Text>
-                  <Text style={styles.registeredByText}>
-                    登録者: {members.find(m => m.id === attendance.registeredBy)?.name || '不明'}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.noAttendanceInfo}>
-                  <Text style={styles.noAttendanceText}>まだ登録されていません</Text>
-                </View>
-              )}
+              <View style={styles.membersContainer}>
+                {members.map((member) => {
+                  const isAttending = attendingMembers.includes(member.id);
+                  return (
+                    <View key={member.id} style={styles.memberRow}>
+                      <View style={styles.memberInfo}>
+                        <View style={[
+                          styles.memberAvatar,
+                          isAttending && styles.memberAvatarAttending
+                        ]}>
+                          <Text style={[
+                            styles.memberAvatarText,
+                            isAttending && styles.memberAvatarTextAttending
+                          ]}>
+                            {member.name.charAt(0)}
+                          </Text>
+                        </View>
+                        <Text style={[
+                          styles.memberName,
+                          isAttending && styles.memberNameAttending
+                        ]}>
+                          {member.name}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.toggleSwitch,
+                          isAttending && styles.toggleSwitchActive
+                        ]}
+                        onPress={() => toggleMemberAttendance(type, member.id)}
+                        disabled={!currentMemberId}
+                      >
+                        <View style={[
+                          styles.toggleThumb,
+                          isAttending && styles.toggleThumbActive
+                        ]} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
             </View>
           );
         })}
 
       </ScrollView>
 
-      {/* 参加予定を回答ボタン - 下部固定 */}
-      {currentMemberId && (
-        <View style={styles.bottomButtonContainer}>
-          <TouchableOpacity 
-            style={styles.personalResponseButton}
-            onPress={() => navigation.navigate('PersonalResponse')}
-          >
-            <Ionicons name="person-outline" size={20} color="white" />
-            <Text style={styles.personalResponseButtonText}>参加予定を回答</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
   );
 };
@@ -154,7 +221,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: 'white',
-    padding: 20,
+    padding: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
@@ -190,13 +258,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 12,
   },
   mealCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -206,13 +274,13 @@ const styles = StyleSheet.create({
   mealHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   mealTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginLeft: 12,
+    marginLeft: 8,
     flex: 1,
   },
   registerButton: {
@@ -242,30 +310,78 @@ const styles = StyleSheet.create({
     color: '#856404',
     textAlign: 'center',
   },
-  bottomButtonContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 32, // 下部の安全エリアを考慮
-    backgroundColor: '#f8f9fa',
+  membersContainer: {
+    paddingVertical: 8,
   },
-  personalResponseButton: {
-    backgroundColor: '#6B7C32',
+  memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  personalResponseButtonText: {
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  memberAvatarAttending: {
+    backgroundColor: '#6B7C32',
+  },
+  memberAvatarText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  memberAvatarTextAttending: {
     color: 'white',
-    fontSize: 18,
+  },
+  memberName: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  memberNameAttending: {
+    color: '#6B7C32',
     fontWeight: '600',
-    marginLeft: 8,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ddd',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#6B7C32',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+    alignSelf: 'flex-start',
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
   },
 });
 

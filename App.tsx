@@ -101,12 +101,12 @@ function MainStack() {
       }}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeStack}
+        name="Schedule"
+        component={ScheduleScreen}
         options={{
-          title: '食事参加',
+          title: 'ホーム',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="restaurant-outline" size={size} color={color} />
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -117,16 +117,6 @@ function MainStack() {
           title: '家族',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Schedule"
-        component={ScheduleScreen}
-        options={{
-          title: 'スケジュール',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />

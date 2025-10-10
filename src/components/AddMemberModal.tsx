@@ -13,13 +13,20 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ visible, onClose, onAdd
   const [isProxy, setIsProxy] = useState(true);
 
   const handleSubmit = () => {
-    if (!memberName.trim()) {
+    const trimmedName = memberName.trim();
+    
+    if (!trimmedName) {
       Alert.alert('エラー', '名前を入力してください。');
       return;
     }
 
+    if (trimmedName.length > 8) {
+      Alert.alert('エラー', '名前は8文字以内で入力してください。');
+      return;
+    }
+
     onAddMember({
-      name: memberName.trim(),
+      name: trimmedName,
       isProxy,
     });
 
@@ -51,11 +58,12 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ visible, onClose, onAdd
               <Text style={styles.label}>名前</Text>
               <TextInput
                 style={styles.input}
-                placeholder="例: 太郎"
+                placeholder="例: 太郎 (8文字以内)"
                 value={memberName}
                 onChangeText={setMemberName}
                 autoCapitalize="words"
                 autoCorrect={false}
+                maxLength={8}
               />
             </View>
 
