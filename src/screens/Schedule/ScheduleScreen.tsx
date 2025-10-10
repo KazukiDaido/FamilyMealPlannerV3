@@ -309,6 +309,12 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
             最終同期: {new Date(lastSyncTime).toLocaleTimeString()}
           </Text>
         )}
+        {/* デバッグ情報 */}
+        {__DEV__ && (
+          <Text style={styles.debugText}>
+            現在のメンバーID: {currentMemberId || '未設定'}
+          </Text>
+        )}
       </View>
 
       <ScrollView style={styles.content}>
@@ -571,6 +577,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 4,
+    fontFamily: 'monospace',
   },
   content: {
     flex: 1,
