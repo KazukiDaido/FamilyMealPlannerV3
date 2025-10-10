@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { fetchFamilyMembers, fetchMealAttendances, setMealAttendances } from '../../store/slices/familySlice';
+import { fetchFamilyMembers, fetchMealAttendances } from '../../store/slices/familySlice';
 import { FamilyMember, MealAttendance, MealType } from '../../types';
 
 interface HomeScreenProps {
@@ -29,49 +29,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     dispatch(fetchMealAttendances({}));
   }, [dispatch]);
 
-  // 古い食事参加データをクリアする関数
-  const clearOldMealData = () => {
-    Alert.alert(
-      'データクリア',
-      '期限切れの食事参加データをクリアしますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: 'クリア',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // 期限切れのデータをフィルタリング
-              const now = new Date();
-              const expiredAttendances = mealAttendances.filter(attendance => {
-                if (!attendance.deadline) return false;
-                return new Date(attendance.deadline) < now;
-              });
-              
-              console.log(`期限切れデータ数: ${expiredAttendances.length}`);
-              
-              // 期限切れデータを削除（Redux stateから）
-              const validAttendances = mealAttendances.filter(attendance => {
-                if (!attendance.deadline) return true; // 期限がない場合は保持
-                return new Date(attendance.deadline) >= now; // 期限が未来の場合は保持
-              });
-              
-              // Redux stateを更新
-              dispatch(setMealAttendances(validAttendances));
-              
-              // データを再取得してFirebaseと同期
-              dispatch(fetchMealAttendances({}));
-              
-              Alert.alert('完了', `${expiredAttendances.length}件の期限切れデータをクリアしました`);
-            } catch (error) {
-              console.error('データクリアエラー:', error);
-              Alert.alert('エラー', 'データのクリアに失敗しました');
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const getAttendanceForMeal = (mealType: MealType) => {
     // 今日の日付で、指定された食事タイプの最新の参加データを取得
@@ -133,18 +90,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         )}
       </View>
 
-      {/* 個人回答ボタン */}
-      {currentMemberId && (
-        <View style={styles.personalResponseSection}>
-          <TouchableOpacity 
-            style={styles.personalResponseButton}
-            onPress={() => navigation.navigate('PersonalResponse')}
-          >
-            <Ionicons name="person-outline" size={20} color="white" />
-            <Text style={styles.personalResponseButtonText}>参加予定を回答</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <ScrollView style={styles.content}>
         {mealTypes.map(({ type, label, icon }) => {
@@ -174,62 +119,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           );
         })}
 
-        <TouchableOpacity
-          style={styles.familyButton}
-          onPress={() => navigation.navigate('Family')}
-        >
-          <Ionicons name="people-outline" size={20} color="white" />
-          <Text style={styles.familyButtonText}>家族メンバー管理</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.clearDataButton}
-          onPress={clearOldMealData}
-        >
-          <Ionicons name="trash-outline" size={20} color="white" />
-          <Text style={styles.clearDataButtonText}>古いデータをクリア</Text>
-        </TouchableOpacity>
-
-        {/* デバッグ用ボタン */}
-        <TouchableOpacity
-          style={[styles.clearDataButton, { backgroundColor: '#FF9500' }]}
-          onPress={() => {
-            console.log('現在の食事参加データ数:', mealAttendances.length);
-            console.log('期限切れデータ数:', mealAttendances.filter(a => a.deadline && new Date(a.deadline) < new Date()).length);
-            Alert.alert('デバッグ情報', `食事参加データ: ${mealAttendances.length}件\n期限切れ: ${mealAttendances.filter(a => a.deadline && new Date(a.deadline) < new Date()).length}件`);
-          }}
-        >
-          <Ionicons name="information-circle-outline" size={20} color="white" />
-          <Text style={styles.clearDataButtonText}>デバッグ情報</Text>
-        </TouchableOpacity>
-
-        {/* 今日のデータをリセット */}
-        <TouchableOpacity
-          style={[styles.clearDataButton, { backgroundColor: '#FF3B30' }]}
-          onPress={() => {
-            Alert.alert(
-              '今日のデータリセット',
-              '今日の食事参加データをすべてリセットしますか？',
-              [
-                { text: 'キャンセル', style: 'cancel' },
-                {
-                  text: 'リセット',
-                  style: 'destructive',
-                  onPress: () => {
-                    const today = new Date().toISOString().split('T')[0];
-                    const filteredAttendances = mealAttendances.filter(attendance => attendance.date !== today);
-                    dispatch(setMealAttendances(filteredAttendances));
-                    Alert.alert('完了', '今日の食事参加データをリセットしました');
-                  }
-                }
-              ]
-            );
-          }}
-        >
-          <Ionicons name="refresh-outline" size={20} color="white" />
-          <Text style={styles.clearDataButtonText}>今日のデータをリセット</Text>
-        </TouchableOpacity>
       </ScrollView>
+
+      {/* 参加予定を回答ボタン - 下部固定 */}
+      {currentMemberId && (
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity 
+            style={styles.personalResponseButton}
+            onPress={() => navigation.navigate('PersonalResponse')}
+          >
+            <Ionicons name="person-outline" size={20} color="white" />
+            <Text style={styles.personalResponseButtonText}>参加予定を回答</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -339,49 +242,14 @@ const styles = StyleSheet.create({
     color: '#856404',
     textAlign: 'center',
   },
-  familyButton: {
-    backgroundColor: '#6B7C32',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-  },
-  familyButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  clearDataButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF6B6B',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginTop: 10,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  clearDataButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  personalResponseSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  bottomButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32, // 下部の安全エリアを考慮
+    backgroundColor: '#f8f9fa',
   },
   personalResponseButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#6B7C32',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -395,7 +263,7 @@ const styles = StyleSheet.create({
   },
   personalResponseButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     marginLeft: 8,
   },
