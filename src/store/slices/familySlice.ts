@@ -102,18 +102,41 @@ export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejec
   }
 );
 
-// 非同期アクション: 食事参加を取得（ローカル動作）
-export const fetchMealAttendances = createAsyncThunk<MealAttendance[], void, { rejectValue: string }>(
-  'family/fetchAttendances',
-  async (_, { rejectWithValue }) => {
+// 非同期アクション: 食事参加データを取得（Firebase対応）
+export const fetchMealAttendances = createAsyncThunk<MealAttendance[], { date?: string }, { rejectValue: string }>(
+  'family/fetchMealAttendances',
+  async ({ date }, { getState, rejectWithValue }) => {
     try {
-      // ローカル動作: ダミーデータを返す
-      console.log('ローカルデータを使用して食事参加を取得');
-      return dummyAttendances;
+      const state = getState() as { family: FamilyState };
+      const familyId = state.family.currentFamilyId;
+
+      if (!familyId) {
+        return rejectWithValue('家族グループが見つかりません。');
+      }
+
+      console.log('食事参加データを取得中:', { familyId, date });
+
+      // RealtimeSyncServiceを使用してFirebaseから取得
+      const realtimeAttendances = await RealtimeSyncService.getMealAttendances(familyId, date);
+      console.log('Firebaseから食事参加データを取得完了:', realtimeAttendances);
+
+      // RealtimeMealAttendanceをMealAttendanceに変換
+      const mealAttendances: MealAttendance[] = realtimeAttendances.map(attendance => ({
+        id: attendance.id,
+        date: attendance.date,
+        mealType: attendance.mealType,
+        attendees: attendance.attendees || [],
+        registeredBy: attendance.registeredBy,
+        createdAt: attendance.createdAt || new Date().toISOString(),
+        deadline: attendance.deadline,
+        isLocked: attendance.isLocked,
+        responses: attendance.responses || [],
+      }));
+
+      return mealAttendances;
     } catch (err) {
-      // エラーの場合もダミーデータを使用
-      console.warn('食事参加取得に失敗、ダミーデータを使用:', err);
-      return dummyAttendances;
+      console.error('食事参加データ取得エラー:', err);
+      return rejectWithValue('食事参加データの取得に失敗しました。');
     }
   }
 );
@@ -246,6 +269,43 @@ export const deleteFamilyMember = createAsyncThunk<string, string, { rejectValue
   }
 );
 
+// 非同期アクション: 食事参加データを保存
+export const saveMealAttendance = createAsyncThunk<MealAttendance, MealAttendance, { rejectValue: string }>(
+  'family/saveMealAttendance',
+  async (attendanceData, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { family: FamilyState };
+      const familyId = state.family.currentFamilyId;
+
+      if (!familyId) {
+        return rejectWithValue('家族グループが見つかりません。');
+      }
+
+      // RealtimeSyncServiceを使用してFirebaseに保存
+      const realtimeAttendance = {
+        id: attendanceData.id,
+        familyId: familyId,
+        date: attendanceData.date,
+        mealType: attendanceData.mealType,
+        attendees: attendanceData.attendees,
+        registeredBy: attendanceData.registeredBy,
+        createdAt: attendanceData.createdAt,
+        deadline: attendanceData.deadline,
+        isLocked: attendanceData.isLocked,
+        responses: attendanceData.responses || [],
+      };
+
+      await RealtimeSyncService.saveMealAttendance(realtimeAttendance);
+      console.log('食事参加データをFirebaseで保存完了:', realtimeAttendance);
+
+      return attendanceData;
+    } catch (err) {
+      console.error('食事参加データ保存エラー:', err);
+      return rejectWithValue('食事参加データの保存に失敗しました。');
+    }
+  }
+);
+
 // ログインアクション
 export const loginAsMember = createAsyncThunk<string, string, { rejectValue: string }>(
   'family/loginAsMember',
@@ -327,34 +387,30 @@ export const startRealtimeSync = createAsyncThunk<void, string, { rejectValue: s
         }
       );
 
-      // 食事参加状況のリアルタイムリスナーを設定（一時的に無効化）
-      // const attendancesUnsubscribe = RealtimeSyncService.subscribeToMealAttendances(
-      //   familyId,
-      //   (attendances: RealtimeMealAttendance[]) => {
-      //     const mealAttendances: MealAttendance[] = attendances.map(attendance => ({
-      //       id: attendance.id,
-      //       date: attendance.date,
-      //       mealType: attendance.mealType,
-      //       attendees: attendance.attendance === 'attending' ? [attendance.memberId] : [],
-      //       registeredBy: attendance.memberId,
-      //       createdAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
-      //       responses: [{
-      //         id: `pr-${attendance.id}`,
-      //         familyMemberId: attendance.memberId,
-      //         date: attendance.date,
-      //         mealType: attendance.mealType,
-      //         willAttend: attendance.attendance === 'attending',
-      //         respondedAt: attendance.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
-      //       }]
-      //     }));
-      //     dispatch(setMealAttendances(mealAttendances));
-      //   }
-      // );
+      // 食事参加状況のリアルタイムリスナーを設定
+      const attendancesUnsubscribe = RealtimeSyncService.subscribeToMealAttendances(
+        familyId,
+        (attendances: RealtimeMealAttendance[]) => {
+          const mealAttendances: MealAttendance[] = attendances.map(attendance => ({
+            id: attendance.id,
+            date: attendance.date,
+            mealType: attendance.mealType,
+            attendees: attendance.attendees || [],
+            registeredBy: attendance.registeredBy,
+            createdAt: attendance.createdAt || new Date().toISOString(),
+            deadline: attendance.deadline,
+            isLocked: attendance.isLocked,
+            responses: attendance.responses || [],
+          }));
+          dispatch(setMealAttendances(mealAttendances));
+          console.log('リアルタイム食事参加データ更新:', mealAttendances);
+        }
+      );
 
       // リスナーを保存（関数は直接保存しない）
       dispatch(setRealtimeListeners({
         members: 'active', // 関数の代わりに状態文字列を保存
-        attendances: 'inactive' // mealAttendancesリスナーは無効化
+        attendances: 'active' // mealAttendancesリスナーを有効化
       }));
 
       dispatch(setConnected(true));

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { fetchFamilyMembers, fetchMealAttendances, registerMealAttendance } from '../../store/slices/familySlice';
+import { fetchFamilyMembers, fetchMealAttendances, registerMealAttendance, saveMealAttendance } from '../../store/slices/familySlice';
 import { FamilyMember, MealAttendance, MealType } from '../../types';
 
 interface HomeScreenProps {
@@ -26,7 +26,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     dispatch(fetchFamilyMembers());
-    dispatch(fetchMealAttendances());
+    dispatch(fetchMealAttendances({}));
   }, [dispatch]);
 
   const getAttendanceForMeal = (mealType: MealType) => {
@@ -39,9 +39,43 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return attendees.map(id => members.find(member => member.id === id)?.name || '不明').join(', ');
   };
 
-  const handleRegisterAttendance = (mealType: MealType) => {
-    // 食事参加登録画面に遷移
-    navigation.navigate('RegisterMeal', { mealType, date: selectedDate });
+  const handleRegisterAttendance = async (mealType: MealType) => {
+    if (!currentMemberId) {
+      console.warn('ログイン中のメンバーが見つかりません');
+      return;
+    }
+
+    try {
+      // 回答期限を設定（現在時刻から30分後）
+      const deadline = new Date();
+      deadline.setMinutes(deadline.getMinutes() + 30);
+      
+      // 新しい食事参加データを作成
+      const newAttendance: MealAttendance = {
+        id: `meal_${Date.now()}`,
+        date: selectedDate,
+        mealType: mealType,
+        attendees: [currentMemberId],
+        registeredBy: currentMemberId,
+        createdAt: new Date().toISOString(),
+        deadline: deadline.toISOString(),
+        isLocked: false,
+        responses: [{
+          id: `response_${Date.now()}`,
+          familyMemberId: currentMemberId,
+          date: selectedDate,
+          mealType: mealType,
+          willAttend: true,
+          respondedAt: new Date().toISOString(),
+        }],
+      };
+
+      // Firebaseに保存
+      await dispatch(saveMealAttendance(newAttendance)).unwrap();
+      console.log('食事参加データをFirebaseに保存完了:', newAttendance);
+    } catch (error) {
+      console.error('食事参加データの保存に失敗:', error);
+    }
   };
 
   const mealTypes: { type: MealType; label: string; icon: string }[] = [

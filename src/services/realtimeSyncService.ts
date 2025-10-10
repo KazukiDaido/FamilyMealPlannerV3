@@ -98,6 +98,54 @@ class RealtimeSyncService {
     }
   }
 
+  // 食事参加データの保存
+  async saveMealAttendance(attendance: RealtimeMealAttendance): Promise<void> {
+    if (isDummyConfig) {
+      // ローカルモード: AsyncStorageに保存
+      const key = `meal_attendance_${attendance.familyId}_${attendance.id}`;
+      await AsyncStorage.setItem(key, JSON.stringify(attendance));
+      console.log('ローカル保存完了:', attendance);
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'mealAttendances', attendance.id);
+      // undefinedフィールドを除外してFirebaseに保存
+      const docData = {
+        id: attendance.id,
+        familyId: attendance.familyId,
+        date: attendance.date,
+        mealType: attendance.mealType,
+        attendees: attendance.attendees,
+        registeredBy: attendance.registeredBy,
+        createdAt: attendance.createdAt,
+        responses: attendance.responses,
+        ...(attendance.deadline && { deadline: attendance.deadline }),
+        ...(attendance.isLocked !== undefined && { isLocked: attendance.isLocked }),
+        updatedAt: serverTimestamp()
+      };
+      
+      console.log('🍽️ Firebaseに食事参加データ保存中:', { 
+        docId: docRef.id, 
+        familyId: attendance.familyId, 
+        date: attendance.date,
+        mealType: attendance.mealType,
+        docData 
+      });
+      
+      await setDoc(docRef, docData);
+      console.log('✅ 食事参加データ保存完了:', { 
+        docId: docRef.id, 
+        familyId: attendance.familyId, 
+        date: attendance.date,
+        mealType: attendance.mealType 
+      });
+    } catch (error) {
+      console.error('食事参加データの保存エラー:', error);
+      throw error;
+    }
+  }
+
   // 食事参加状況の取得
   async getMealAttendances(familyId: string, date?: string): Promise<RealtimeMealAttendance[]> {
     if (isDummyConfig) {
@@ -113,20 +161,32 @@ class RealtimeSyncService {
     }
 
     try {
+      console.log('🔍 Firebase食事参加データクエリ開始:', { familyId, date });
+      
+      // orderByを一時的に削除してインデックスエラーを回避
       const q = query(
         collection(db, 'mealAttendances'),
         where('familyId', '==', familyId),
-        ...(date ? [where('date', '==', date)] : []),
-        orderBy('timestamp', 'desc')
+        ...(date ? [where('date', '==', date)] : [])
       );
 
+      console.log('🔍 Firebase食事参加データクエリ実行中...');
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      
+      console.log('🔍 Firebase食事参加データクエリ完了:', {
+        docsCount: querySnapshot.docs.length,
+        docs: querySnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }))
+      });
+      
+      const attendances = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as RealtimeMealAttendance[];
+      
+      console.log('🔍 最終的な食事参加データ配列:', attendances);
+      return attendances;
     } catch (error) {
-      console.error('食事参加状況の取得エラー:', error);
+      console.error('❌ 食事参加状況の取得エラー:', error);
       throw error;
     }
   }
@@ -201,11 +261,11 @@ class RealtimeSyncService {
     }
 
     try {
+      // orderByを一時的に削除してインデックスエラーを回避
       const q = query(
         collection(db, 'mealAttendances'),
         where('familyId', '==', familyId),
-        ...(date ? [where('date', '==', date)] : []),
-        orderBy('timestamp', 'desc')
+        ...(date ? [where('date', '==', date)] : [])
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {

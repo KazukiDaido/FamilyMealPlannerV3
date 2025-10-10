@@ -48,9 +48,14 @@ const PersonalResponseScreen: React.FC<PersonalResponseScreenProps> = ({ navigat
     return deadline;
   };
 
-  // 期限切れかどうかの判定
+  // 期限切れかどうかの判定（実際の食事参加データの期限を使用）
   const isDeadlinePassed = (mealType: MealType): boolean => {
-    return new Date() > getDeadlineTime(mealType);
+    const mealAttendance = todayMeals.find(meal => meal.mealType === mealType);
+    if (!mealAttendance?.deadline) {
+      // 期限が設定されていない場合は固定時間ベースで判定
+      return new Date() > getDeadlineTime(mealType);
+    }
+    return new Date() > new Date(mealAttendance.deadline);
   };
 
   // 現在の回答状況を取得
@@ -129,9 +134,10 @@ const PersonalResponseScreen: React.FC<PersonalResponseScreenProps> = ({ navigat
       : { status: 'not-attend', color: '#FF3B30', icon: 'close-circle' };
   };
 
-  // 残り時間の表示
+  // 残り時間の表示（実際の食事参加データの期限を使用）
   const getTimeRemaining = (mealType: MealType): string => {
-    const deadline = getDeadlineTime(mealType);
+    const mealAttendance = todayMeals.find(meal => meal.mealType === mealType);
+    const deadline = mealAttendance?.deadline ? new Date(mealAttendance.deadline) : getDeadlineTime(mealType);
     const now = new Date();
     const diff = deadline.getTime() - now.getTime();
     
