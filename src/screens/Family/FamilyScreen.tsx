@@ -86,6 +86,15 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   };
 
   const handleEditMember = (member: FamilyMember) => {
+    // 代理登録権限をチェック
+    if (!canAddMember()) {
+      Alert.alert(
+        '権限がありません',
+        'メンバーの権限を変更するには代理登録権限が必要です。'
+      );
+      return;
+    }
+    
     Alert.alert(
       'メンバー権限を変更',
       `${member.name}の代理登録権限を${member.isProxy ? '無効' : '有効'}にしますか？`,
@@ -109,6 +118,15 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   };
 
   const handleDeleteMember = (member: FamilyMember) => {
+    // 代理登録権限をチェック
+    if (!canAddMember()) {
+      Alert.alert(
+        '権限がありません',
+        'メンバーを削除するには代理登録権限が必要です。'
+      );
+      return;
+    }
+    
     Alert.alert(
       'メンバーを削除',
       `${member.name}を家族から削除しますか？`,

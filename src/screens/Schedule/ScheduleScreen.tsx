@@ -453,7 +453,16 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
                               isAttending && styles.toggleSwitchActive,
                               !canToggleMemberAttendance(member.id) && styles.toggleSwitchDisabled
                             ]}
-                            onPress={() => toggleMemberAttendance(meal.type, member.id)}
+                            onPress={() => {
+                              console.log('トグルがタップされました:', { 
+                                mealType: meal.type, 
+                                memberId: member.id, 
+                                memberName: member.name,
+                                currentMemberId,
+                                canToggle: canToggleMemberAttendance(member.id)
+                              });
+                              toggleMemberAttendance(meal.type, member.id);
+                            }}
                             disabled={!currentMemberId || !canToggleMemberAttendance(member.id)}
                           >
                             <View style={[
