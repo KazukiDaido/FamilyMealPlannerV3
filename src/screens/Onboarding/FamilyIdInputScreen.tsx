@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useDispatch } from 'react-redux';
+import { setCurrentFamilyGroup } from '../../store/slices/familyGroupSlice';
+import FamilyGroupService from '../../services/familyGroupService';
 
 interface FamilyIdInputScreenProps {
   navigation: any;
@@ -10,6 +13,7 @@ interface FamilyIdInputScreenProps {
 
 const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, onFamilyIdSubmit }) => {
   const [familyId, setFamilyId] = useState('');
+  const dispatch = useDispatch();
 
   const handleSubmit = () => {
     if (!familyId.trim()) {
@@ -27,8 +31,7 @@ const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, o
       return;
     }
 
-    // TODO: 実際の家族ID検証ロジックを実装
-    // ここでは仮で、家族IDが存在するかどうかをチェック
+    // 家族グループの検索と参加
     Alert.alert(
       '家族グループに参加',
       `家族ID "${familyId}" で家族グループに参加しますか？`,
@@ -36,10 +39,24 @@ const FamilyIdInputScreen: React.FC<FamilyIdInputScreenProps> = ({ navigation, o
         { text: 'キャンセル', style: 'cancel' },
         { 
           text: '参加', 
-          onPress: () => {
-            // 既存の家族に参加する場合は、ログイン画面に遷移
-            // ここでは仮で初期設定画面に遷移
-            navigation.navigate('InitialSetup');
+          onPress: async () => {
+            try {
+              // 家族グループを検索
+              const familyGroup = await FamilyGroupService.getFamilyGroupByCode(familyId);
+              
+              if (familyGroup) {
+                // 家族グループを設定
+                dispatch(setCurrentFamilyGroup(familyGroup));
+                
+                // オンボーディング完了を通知（これによりAuthStackに遷移）
+                onFamilyIdSubmit(familyId);
+              } else {
+                Alert.alert('エラー', '指定された家族IDが見つかりません。');
+              }
+            } catch (error) {
+              console.error('家族グループ参加エラー:', error);
+              Alert.alert('エラー', '家族グループへの参加に失敗しました。');
+            }
           }
         }
       ]

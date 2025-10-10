@@ -96,6 +96,23 @@ class FamilyGroupService {
   // 家族コードで家族グループを取得
   static async getFamilyGroupByCode(familyCode: string): Promise<FamilyGroup | null> {
     try {
+      // ローカルモードの場合はAsyncStorageから取得
+      if (isDummyConfig) {
+        const keys = await AsyncStorage.getAllKeys();
+        const familyGroupKeys = keys.filter(key => key.startsWith('family_group_'));
+        
+        for (const key of familyGroupKeys) {
+          const familyGroupData = await AsyncStorage.getItem(key);
+          if (familyGroupData) {
+            const familyGroup = JSON.parse(familyGroupData);
+            if (familyGroup.familyCode === familyCode) {
+              return familyGroup;
+            }
+          }
+        }
+        return null;
+      }
+
       const q = query(
         collection(db, 'familyGroups'),
         where('familyCode', '==', familyCode)
