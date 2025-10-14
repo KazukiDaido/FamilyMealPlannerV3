@@ -1,6 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
+import { logout } from '../../store/slices/familySlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingService from '../../services/onboardingService';
 
 interface SettingsScreenProps {
@@ -8,8 +12,43 @@ interface SettingsScreenProps {
 }
 
 export default function SettingsScreen({ navigation }: SettingsScreenProps) {
+  const dispatch = useDispatch<AppDispatch>();
+  const { currentMemberId, members } = useSelector((state: RootState) => state.family);
+  
+  // 現在ログインユーザーの取得
+  const getCurrentUser = () => {
+    return members.find(member => member.id === currentMemberId);
+  };
+
   const handleNotificationSettings = () => {
     navigation.navigate('NotificationSettings');
+  };
+
+  const handleLogout = () => {
+    const currentUser = getCurrentUser();
+    Alert.alert(
+      'ログアウト',
+      currentUser 
+        ? `${currentUser.name}さんのアカウントからログアウトしますか？`
+        : 'ログアウトしますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'ログアウト',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('currentMemberId');
+              dispatch(logout());
+              Alert.alert('ログアウト完了', 'ログイン画面に戻ります。');
+            } catch (error) {
+              console.error('ログアウトエラー:', error);
+              Alert.alert('エラー', 'ログアウトに失敗しました。');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleResetOnboarding = () => {
@@ -34,13 +73,33 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     );
   };
 
+  const currentUser = getCurrentUser();
+
   const settingItems = [
+    {
+      id: 'current_user',
+      title: '現在のユーザー',
+      subtitle: currentUser ? `${currentUser.name}${currentUser.isProxy ? ' (代理登録可)' : ''}` : '未ログイン',
+      icon: 'person-circle-outline',
+      onPress: () => {},
+      isInfo: true,
+    },
+    {
+      id: 'logout',
+      title: 'ログアウト',
+      subtitle: '別のメンバーでログインする',
+      icon: 'log-out-outline',
+      onPress: handleLogout,
+      isEnabled: true,
+      isDanger: true,
+    },
     {
       id: 'notifications',
       title: '通知設定',
       subtitle: '食事時間のリマインダー',
       icon: 'notifications-outline',
       onPress: handleNotificationSettings,
+      isEnabled: true,
     },
     {
       id: 'reset_onboarding',
@@ -48,6 +107,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       subtitle: '初回起動画面を再度表示',
       icon: 'refresh-outline',
       onPress: handleResetOnboarding,
+      isEnabled: true,
     },
     {
       id: 'profile',
@@ -55,6 +115,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       subtitle: 'ユーザー情報の管理',
       icon: 'person-outline',
       onPress: () => {},
+      isEnabled: false,
     },
     {
       id: 'privacy',
@@ -62,6 +123,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       subtitle: 'データの管理と設定',
       icon: 'shield-outline',
       onPress: () => {},
+      isEnabled: false,
     },
   ];
 
@@ -75,22 +137,40 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         {settingItems.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={styles.settingItem}
+            style={[
+              styles.settingItem,
+              item.isInfo && styles.settingItemInfo,
+              item.isDanger && styles.settingItemDanger,
+            ]}
             onPress={item.onPress}
-            disabled={item.id !== 'notifications' && item.id !== 'reset_onboarding'}
+            disabled={!item.isEnabled && !item.isInfo}
           >
-            <View style={styles.settingIcon}>
-              <Ionicons name={item.icon} size={24} color="#6B7C32" />
+            <View style={[
+              styles.settingIcon,
+              item.isDanger && styles.settingIconDanger,
+            ]}>
+              <Ionicons 
+                name={item.icon} 
+                size={24} 
+                color={item.isDanger ? '#dc3545' : '#6B7C32'} 
+              />
             </View>
             <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>{item.title}</Text>
+              <Text style={[
+                styles.settingTitle,
+                item.isDanger && styles.settingTitleDanger,
+              ]}>
+                {item.title}
+              </Text>
               <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
             </View>
-            <Ionicons 
-              name="chevron-forward" 
-              size={20} 
-              color={(item.id === 'notifications' || item.id === 'reset_onboarding') ? '#6B7C32' : '#ccc'} 
-            />
+            {!item.isInfo && (
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={item.isEnabled ? '#6B7C32' : '#ccc'} 
+              />
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -153,5 +233,20 @@ const styles = StyleSheet.create({
   settingSubtitle: {
     fontSize: 14,
     color: '#666',
+  },
+  settingItemInfo: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#6B7C32',
+  },
+  settingItemDanger: {
+    borderWidth: 1,
+    borderColor: '#dc3545',
+  },
+  settingIconDanger: {
+    backgroundColor: '#ffebee',
+  },
+  settingTitleDanger: {
+    color: '#dc3545',
   },
 });
