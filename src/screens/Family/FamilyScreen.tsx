@@ -351,7 +351,7 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleAddMember} style={styles.addButton}>
-            <Ionicons name="add" size={24} color="#6B7C32" />
+            <Ionicons name="person-add" size={24} color="#6B7C32" />
           </TouchableOpacity>
         </View>
       </View>

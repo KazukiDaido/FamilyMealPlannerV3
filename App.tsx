@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, persistor, RootState, AppDispatch } from './src/store';
 import { loadCurrentFamilyGroup } from './src/store/slices/familyGroupSlice';
 import { startRealtimeSync } from './src/store/slices/familySlice';
+import { loadNotificationSettings } from './src/store/slices/notificationSlice';
 
 // Screen imports
 import HomeScreen from './src/screens/Home/HomeScreen';
@@ -33,7 +34,7 @@ import ScheduleScreen from './src/screens/Schedule/ScheduleScreen';
 import OnboardingScreen from './src/screens/Onboarding/OnboardingScreen';
 import InitialSetupScreen from './src/screens/Onboarding/InitialSetupScreen';
 import FamilyIdInputScreen from './src/screens/Onboarding/FamilyIdInputScreen';
-import NotificationService from './src/services/notificationService';
+import { notificationService } from './src/services/notificationService';
 import OnboardingService from './src/services/onboardingService';
 // import AuthService from './src/services/authService';
 // import { startRealtimeSync } from './src/store/slices/familySlice';
@@ -213,6 +214,9 @@ function AppContent() {
         // 家族グループの初期化
         dispatch(loadCurrentFamilyGroup());
 
+        // 通知設定の初期化
+        dispatch(loadNotificationSettings());
+
         // リアルタイム同期の開始（家族グループが存在する場合）
         const state = store.getState();
         const currentFamilyGroup = state.familyGroup.currentFamilyGroup;
@@ -224,7 +228,7 @@ function AppContent() {
         // 通知権限の要求と初期設定
         const initializeNotifications = async () => {
           try {
-            const hasPermission = await NotificationService.requestPermissions();
+            const hasPermission = await notificationService.requestPermissions();
             if (hasPermission) {
               console.log('通知権限が許可されました');
             } else {

@@ -76,8 +76,15 @@ export interface FamilyGroupJoinRequest {
 // 通知設定の型定義
 export interface NotificationSettings {
   isEnabled: boolean;
-  breakfastTime: string; // "07:00"
-  lunchTime: string;     // "12:00"
-  dinnerTime: string;    // "18:00"
+  // 食事連絡締め切り時間
+  deadlineBreakfast: string; // "07:00"
+  deadlineLunch: string;     // "12:00"
+  deadlineDinner: string;    // "18:00"
+  // 自動通知設定
+  autoNotifyEnabled: boolean;
+  notifyBeforeDeadline: number; // 締切何分前に通知するか（分）
+  // 食事不要通知
+  noMealNotificationEnabled: boolean;
+  noMealNotificationTime: string; // "11:30" (昼食不要通知の時間)
   includeFamilyInfo: boolean;
 }

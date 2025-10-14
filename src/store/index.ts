@@ -7,19 +7,21 @@ import { combineReducers } from '@reduxjs/toolkit';
 import familyReducer from './slices/familySlice';
 import userReducer from './slices/userSlice';
 import familyGroupReducer from './slices/familyGroupSlice';
+import notificationReducer from './slices/notificationSlice';
 
 // ルートリデューサー
 const rootReducer = combineReducers({
   family: familyReducer,
   user: userReducer,
   familyGroup: familyGroupReducer,
+  notification: notificationReducer,
 });
 
 // 永続化設定
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['user', 'familyGroup'], // ユーザー情報と家族グループ情報を永続化
+  whitelist: ['user', 'familyGroup', 'notification'], // ユーザー情報、家族グループ情報、通知設定を永続化
   // 食事データは毎回最新を取得するため永続化しない
 };
 

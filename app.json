@@ -29,7 +29,14 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-camera"
+      "expo-camera",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6B7C32"
+        }
+      ]
     ]
   }
 }
