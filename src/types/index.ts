@@ -10,6 +10,7 @@ export interface FamilyMember {
   role: FamilyRole;
   isProxy: boolean; // 他の人の分を登録できるか
   avatar?: string; // アバター画像のURL
+  pin?: string; // 4桁PIN（オプショナル）
 }
 
 // 個人回答の型定義

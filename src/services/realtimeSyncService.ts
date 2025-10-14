@@ -34,6 +34,7 @@ export interface RealtimeFamilyMember {
   name: string;
   role: 'parent' | 'child';
   isProxy: boolean;
+  pin?: string; // 4桁PIN（オプショナル）
   createdAt: any;
   lastActive: any;
 }
@@ -94,6 +95,27 @@ class RealtimeSyncService {
       console.log('✅ Firestore保存完了:', { docId: docRef.id, familyId: member.familyId, memberName: member.name });
     } catch (error) {
       console.error('家族メンバーの保存エラー:', error);
+      throw error;
+    }
+  }
+
+  // 家族メンバーの削除
+  async deleteFamilyMember(memberId: string): Promise<void> {
+    if (isDummyConfig) {
+      // ローカルモード: AsyncStorageから削除
+      const keys = await AsyncStorage.getAllKeys();
+      const memberKeys = keys.filter(key => key.includes(memberId));
+      await AsyncStorage.multiRemove(memberKeys);
+      console.log('ローカル削除完了:', memberId);
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'familyMembers', memberId);
+      await deleteDoc(docRef);
+      console.log('✅ Firebase削除完了:', memberId);
+    } catch (error) {
+      console.error('家族メンバーの削除エラー:', error);
       throw error;
     }
   }

@@ -84,6 +84,7 @@ export const fetchFamilyMembers = createAsyncThunk<FamilyMember[], void, { rejec
         name: member.name,
         role: member.role,
         isProxy: member.isProxy,
+        pin: member.pin, // PINを含める
       }));
 
       // メンバーがいない場合はダミーデータを返す
@@ -196,6 +197,7 @@ export const addFamilyMember = createAsyncThunk<FamilyMember, Omit<FamilyMember,
         name: memberData.name,
         role: memberData.role,
         isProxy: memberData.isProxy,
+        pin: memberData.pin, // PINを含める
         createdAt: new Date().toISOString(),
         lastActive: new Date().toISOString(),
       };
@@ -231,6 +233,7 @@ export const updateFamilyMember = createAsyncThunk<FamilyMember, FamilyMember, {
         name: memberData.name,
         role: memberData.role,
         isProxy: memberData.isProxy,
+        pin: memberData.pin, // PINを含める
         createdAt: new Date().toISOString(), // 実際には既存の値を保持すべき
         lastActive: new Date().toISOString(),
       };
@@ -249,17 +252,20 @@ export const updateFamilyMember = createAsyncThunk<FamilyMember, FamilyMember, {
 // 非同期アクション: 家族メンバーを削除
 export const deleteFamilyMember = createAsyncThunk<string, string, { rejectValue: string }>(
   'family/deleteMember',
-  async (memberId, { rejectWithValue }) => {
+  async (memberId, { rejectWithValue, getState }) => {
     try {
-      // Firebaseから削除
-      if (!isDummyConfig) {
-        const { deleteDoc, doc } = await import('firebase/firestore');
-        const { db } = await import('../../config/firebase');
-        await deleteDoc(doc(db, 'familyMembers', memberId));
-        console.log('家族メンバーをFirebaseから削除完了:', memberId);
-      } else {
+      // 現在の家族グループIDを取得
+      const state = getState() as { family: FamilyState; familyGroup: { currentFamilyGroup: { id: string } | null } };
+      const familyId = state.familyGroup.currentFamilyGroup?.id;
+      
+      if (!familyId) {
         console.log('ローカルモード: 家族メンバーの削除をシミュレート');
+        return memberId;
       }
+
+      // RealtimeSyncServiceを使用してFirebaseから削除
+      await RealtimeSyncService.deleteFamilyMember(memberId);
+      console.log('家族メンバーをFirebaseから削除完了:', memberId);
 
       return memberId;
     } catch (err) {
@@ -311,9 +317,15 @@ export const loginAsMember = createAsyncThunk<string, string, { rejectValue: str
   'family/loginAsMember',
   async (memberId, { rejectWithValue }) => {
     try {
+      // AsyncStorageにログイン状態を保存
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem('currentMemberId', memberId);
+      console.log('ログイン状態をAsyncStorageに保存:', memberId);
+      
       await new Promise(resolve => setTimeout(resolve, 300));
       return memberId;
     } catch (err) {
+      console.error('ログインエラー:', err);
       return rejectWithValue('ログインに失敗しました。');
     }
   }
@@ -324,9 +336,15 @@ export const logoutMember = createAsyncThunk<void, void, { rejectValue: string }
   'family/logoutMember',
   async (_, { rejectWithValue }) => {
     try {
+      // AsyncStorageからログイン状態を削除
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.removeItem('currentMemberId');
+      console.log('ログイン状態をAsyncStorageから削除');
+      
       await new Promise(resolve => setTimeout(resolve, 200));
       return;
     } catch (err) {
+      console.error('ログアウトエラー:', err);
       return rejectWithValue('ログアウトに失敗しました。');
     }
   }
@@ -492,6 +510,9 @@ const familySlice = createSlice({
   name: 'family',
   initialState,
   reducers: {
+    logout: (state) => {
+      state.currentMemberId = null;
+    },
     setFamilyMembers: (state, action: PayloadAction<FamilyMember[]>) => {
       state.members = action.payload;
       state.lastSyncTime = new Date().toISOString();
@@ -631,6 +652,7 @@ const familySlice = createSlice({
 
 // アクションをエクスポート
 export const { 
+  logout,
   setFamilyMembers, 
   setMealAttendances, 
   setConnected, 

@@ -23,8 +23,16 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
     lastSyncTime,
     currentFamilyId
   } = useSelector((state: RootState) => state.family);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  // デバッグ用: 強制的に今日の日付を設定（シミュレーターの日付問題を回避）
+  const today = new Date();
+  console.log('現在の日付:', today.toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(today.toISOString().split('T')[0]);
   const [showMonthModal, setShowMonthModal] = useState<boolean>(false);
+
+  // 現在ログインユーザーの情報を取得
+  const getCurrentUser = () => {
+    return members.find(member => member.id === currentMemberId);
+  };
 
   useEffect(() => {
     console.log('スケジュール画面: useEffect開始', { 
@@ -150,6 +158,31 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
       return;
     }
 
+    // 自分の場合は直接切り替え
+    if (memberId === currentMemberId) {
+      await performToggle(mealType, memberId);
+      return;
+    }
+
+    // 他の人の場合は確認ポップアップのみ（PIN認証はログイン時のみ）
+    const targetMember = members.find(member => member.id === memberId);
+    if (!targetMember) return;
+
+    Alert.alert(
+      '代理登録の確認',
+      `${targetMember.name}さんの食事参加を変更しますか？`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '変更する',
+          onPress: () => performToggle(mealType, memberId)
+        }
+      ]
+    );
+  };
+
+  // 実際の切り替え処理
+  const performToggle = async (mealType: MealType, memberId: string) => {
     try {
       const existingAttendance = mealAttendances.find(
         att => att.date === selectedDate && att.mealType === mealType
@@ -252,7 +285,9 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
   };
 
   const goToToday = () => {
-    setSelectedDate(new Date().toISOString().split('T')[0]);
+    const today = new Date();
+    console.log('今日ボタン: 日付を設定:', today.toISOString().split('T')[0]);
+    setSelectedDate(today.toISOString().split('T')[0]);
   };
 
   // 週の範囲をフォーマットする関数
@@ -308,6 +343,16 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
           <Text style={styles.lastSyncText}>
             最終同期: {new Date(lastSyncTime).toLocaleTimeString()}
           </Text>
+        )}
+        {/* 現在ログインユーザー表示 */}
+        {getCurrentUser() && (
+          <View style={styles.currentUserContainer}>
+            <Ionicons name="person-circle" size={16} color="#6B7C32" />
+            <Text style={styles.currentUserText}>
+              ログイン中: {getCurrentUser()?.name}
+              {getCurrentUser()?.isProxy && ' (代理登録可)'}
+            </Text>
+          </View>
         )}
         {/* デバッグ情報 */}
         {__DEV__ && (
@@ -368,7 +413,8 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ navigation }) => {
               const dayNumber = dateObj.getDate();
               const hasMeals = mealAttendances.some(att => att.date === date);
               const isSelected = date === selectedDate;
-              const isToday = date === new Date().toISOString().split('T')[0];
+              const today = new Date();
+              const isToday = date === today.toISOString().split('T')[0];
               
               return (
                 <TouchableOpacity
@@ -592,6 +638,22 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
     fontFamily: 'monospace',
+  },
+  currentUserContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+    marginHorizontal: 16,
+  },
+  currentUserText: {
+    fontSize: 14,
+    color: '#6B7C32',
+    fontWeight: '500',
+    marginLeft: 6,
   },
   content: {
     flex: 1,

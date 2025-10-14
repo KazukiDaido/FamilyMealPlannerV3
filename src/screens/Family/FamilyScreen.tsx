@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { fetchFamilyMembers, addFamilyMember, deleteFamilyMember } from '../../store/slices/familySlice';
+import { fetchFamilyMembers, addFamilyMember, deleteFamilyMember, logout } from '../../store/slices/familySlice';
 import { FamilyMember } from '../../types';
 import QRCodeShareModal from '../../components/QRCodeShareModal';
 
@@ -39,6 +39,7 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberIsProxy, setNewMemberIsProxy] = useState(false);
+  const [newMemberPin, setNewMemberPin] = useState('');
 
   // 現在のメンバーの代理登録権限をチェック
   const canAddMember = () => {
@@ -66,17 +67,25 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
       return;
     }
 
+    // PINは任意。設定する場合は4桁必須
+    if (newMemberPin.trim() && newMemberPin.length !== 4) {
+      Alert.alert('エラー', 'PINは4桁で入力してください（または空白のままにしてください）');
+      return;
+    }
+
     const newMember: FamilyMember = {
       id: `member_${Date.now()}`,
       name: newMemberName.trim(),
       role: 'parent', // デフォルトでparentに設定
       isProxy: newMemberIsProxy,
+      pin: newMemberPin.trim() || undefined, // 空の場合はundefined
     };
 
     try {
       await dispatch(addFamilyMember(newMember));
       setNewMemberName('');
       setNewMemberIsProxy(false);
+      setNewMemberPin('');
       setShowAddMemberModal(false);
       Alert.alert('成功', '家族メンバーを追加しました');
     } catch (error) {
@@ -96,12 +105,12 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
     }
     
     Alert.alert(
-      'メンバー権限を変更',
-      `${member.name}の代理登録権限を${member.isProxy ? '無効' : '有効'}にしますか？`,
+      'メンバー設定を変更',
+      `${member.name}の設定を変更しますか？`,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
-          text: '変更',
+          text: '権限変更',
           onPress: async () => {
             try {
               const updatedMember = { ...member, isProxy: !member.isProxy };
@@ -111,6 +120,37 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
               console.error('権限変更エラー:', error);
               Alert.alert('エラー', '権限の変更に失敗しました');
             }
+          }
+        },
+        {
+          text: 'PIN設定',
+          onPress: () => {
+            Alert.prompt(
+              'PIN設定',
+              `${member.name}の4桁PINを入力してください（空白で削除）`,
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                  text: '設定',
+                  onPress: async (pin) => {
+                    if (pin && pin.length !== 4) {
+                      Alert.alert('エラー', '4桁のPINを入力してください');
+                      return;
+                    }
+                    try {
+                      const updatedMember = { ...member, pin: pin || undefined };
+                      await dispatch(addFamilyMember(updatedMember));
+                      Alert.alert('成功', pin ? 'PINを設定しました' : 'PINを削除しました');
+                    } catch (error) {
+                      console.error('PIN設定エラー:', error);
+                      Alert.alert('エラー', 'PINの設定に失敗しました');
+                    }
+                  }
+                }
+              ],
+              'secure-text',
+              member.pin || ''
+            );
           }
         }
       ]
@@ -127,17 +167,41 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
       return;
     }
     
+    // 自分自身を削除する場合は警告
+    const state = require('../../store').store.getState();
+    const currentMemberId = state.family.currentMemberId;
+    const isSelfDelete = member.id === currentMemberId;
+    
     Alert.alert(
       'メンバーを削除',
-      `${member.name}を家族から削除しますか？`,
+      isSelfDelete 
+        ? `自分のアカウント（${member.name}）を削除しますか？\n削除後は自動的にログアウトされます。`
+        : `${member.name}を家族から削除しますか？`,
       [
         { text: 'キャンセル', style: 'cancel' },
         { 
           text: '削除', 
           style: 'destructive',
-          onPress: () => {
-            dispatch(deleteFamilyMember(member.id));
-            Alert.alert('削除', `${member.name}を削除しました。`);
+          onPress: async () => {
+            await dispatch(deleteFamilyMember(member.id));
+            
+            if (isSelfDelete) {
+              // 自分を削除した場合はログアウト
+              Alert.alert('削除完了', 'アカウントを削除しました。ログイン画面に戻ります。', [
+                {
+                  text: 'OK',
+                  onPress: async () => {
+                    // ログアウト処理
+                    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                    await AsyncStorage.removeItem('currentMemberId');
+                    // ログイン画面に戻る（App.tsxの認証チェックで自動的に戻る）
+                    dispatch(logout());
+                  }
+                }
+              ]);
+            } else {
+              Alert.alert('削除', `${member.name}を削除しました。`);
+            }
           }
         }
       ]
@@ -332,6 +396,25 @@ const FamilyScreen: React.FC<FamilyScreenProps> = ({ navigation }) => {
               onChangeText={setNewMemberName}
               maxLength={8}
             />
+            
+            <View style={styles.pinInputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="4桁のPIN（任意）"
+                value={newMemberPin}
+                onChangeText={(text) => {
+                  // 数字のみ4桁まで
+                  const numericText = text.replace(/[^0-9]/g, '').slice(0, 4);
+                  setNewMemberPin(numericText);
+                }}
+                keyboardType="numeric"
+                maxLength={4}
+                secureTextEntry={true}
+              />
+              <Text style={styles.pinHelpText}>
+                ※ PINを設定するとログイン時に入力が必要になります。設定しない場合は名前を選ぶだけでログインできます。
+              </Text>
+            </View>
             
             <View style={styles.checkboxContainer}>
               <TouchableOpacity
@@ -615,6 +698,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
     backgroundColor: '#f9f9f9',
+  },
+  pinInputContainer: {
+    marginBottom: 16,
+  },
+  pinHelpText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: -8,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   checkboxContainer: {
     marginBottom: 20,

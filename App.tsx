@@ -184,21 +184,31 @@ function AppContent() {
   };
 
       useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+        
         const initializeApp = async () => {
           try {
             // Firebase認証を有効化
             console.log('Firebase認証を有効化');
             
             // Firebase認証状態の監視
-            const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe = onAuthStateChanged(auth, (user) => {
               console.log('Firebase認証状態変更:', user ? 'ログイン済み' : '未ログイン');
               setFirebaseUser(user);
-              setIsInitializing(false);
             });
 
         // 初回起動かどうかをチェック
         const firstLaunch = await OnboardingService.isFirstLaunch();
         setIsFirstLaunch(firstLaunch);
+
+        // ログイン状態を復元
+        const savedMemberId = await AsyncStorage.getItem('currentMemberId');
+        if (savedMemberId) {
+          console.log('保存されたログイン状態を復元:', savedMemberId);
+          dispatch({ type: 'family/loginAsMember/fulfilled', payload: savedMemberId });
+        } else {
+          console.log('保存されたログイン状態なし');
+        }
 
         // 家族グループの初期化
         dispatch(loadCurrentFamilyGroup());

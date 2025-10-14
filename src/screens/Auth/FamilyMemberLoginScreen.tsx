@@ -7,6 +7,7 @@ import { AppDispatch, RootState } from '../../store';
 import { loginAsMember, fetchFamilyMembers, addFamilyMember } from '../../store/slices/familySlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FamilyMember } from '../../types';
+import PINInput from '../../components/PINInput';
 // import AuthService from '../../services/authService';
 
 interface FamilyMemberLoginScreenProps {
@@ -17,6 +18,7 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
   const dispatch = useDispatch<AppDispatch>();
   const { members, isLoading } = useSelector((state: RootState) => state.family);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [showPINModal, setShowPINModal] = useState<boolean>(false);
 
   // 家族メンバーを取得
   useEffect(() => {
@@ -60,23 +62,54 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
     console.log('選択されたメンバーID:', selectedMemberId);
     console.log('利用可能なメンバー:', members);
 
+    // 選択された家族メンバー情報を取得
+    const selectedMember = members.find(member => member.id === selectedMemberId);
+    if (!selectedMember) {
+      Alert.alert('エラー', `選択された家族メンバーが見つかりません。\n選択ID: ${selectedMemberId}\n利用可能: ${members.map(m => m.id).join(', ')}`);
+      return;
+    }
+
+    console.log('選択されたメンバー:', selectedMember);
+    console.log('PIN設定状態:', selectedMember.pin ? `設定済み(${selectedMember.pin})` : '未設定');
+
+    // PINが設定されている場合はPIN認証モーダルを表示
+    if (selectedMember.pin) {
+      console.log('PIN認証モーダルを表示します');
+      setShowPINModal(true);
+    } else {
+      // PINが設定されていない場合は直接ログイン
+      console.log('PIN未設定のため直接ログインします');
+      await performLogin(selectedMemberId, selectedMember.name);
+    }
+  };
+
+  // PIN認証成功時の処理
+  const handlePINConfirm = async (pin: string) => {
+    if (!selectedMemberId) return;
+    
+    const selectedMember = members.find(member => member.id === selectedMemberId);
+    if (!selectedMember) return;
+
+    if (selectedMember.pin !== pin) {
+      Alert.alert('エラー', 'PINが正しくありません');
+      return;
+    }
+
+    // PIN認証成功
+    setShowPINModal(false);
+    await performLogin(selectedMemberId, selectedMember.name);
+  };
+
+  // 実際のログイン処理
+  const performLogin = async (memberId: string, memberName: string) => {
     try {
-      // 選択された家族メンバー情報を取得
-      const selectedMember = members.find(member => member.id === selectedMemberId);
-      if (!selectedMember) {
-        Alert.alert('エラー', `選択された家族メンバーが見つかりません。\n選択ID: ${selectedMemberId}\n利用可能: ${members.map(m => m.id).join(', ')}`);
-        return;
-      }
-
-      console.log('選択されたメンバー:', selectedMember);
-
       // Firebase認証を一時的に無効化
       console.log('Firebase認証をスキップ、オフライン動作');
       
       // Redux stateも更新
-      await dispatch(loginAsMember(selectedMemberId)).unwrap();
+      await dispatch(loginAsMember(memberId)).unwrap();
       
-      Alert.alert('ログイン成功', `ようこそ、${selectedMember.name}さん！`, [
+      Alert.alert('ログイン成功', `ようこそ、${memberName}さん！`, [
         {
           text: 'OK',
           onPress: () => {
@@ -194,9 +227,17 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
                 </View>
                 <View style={styles.memberDetails}>
                   <Text style={styles.memberName}>{member.name}</Text>
-                  <Text style={[styles.memberRole, { color: getRoleColor(member.role) }]}>
-                    {getRoleLabel(member.role)}
-                  </Text>
+                  <View style={styles.memberMetaInfo}>
+                    <Text style={[styles.memberRole, { color: getRoleColor(member.role) }]}>
+                      {getRoleLabel(member.role)}
+                    </Text>
+                    {member.pin && (
+                      <View style={styles.pinBadge}>
+                        <Ionicons name="lock-closed" size={12} color="#666" />
+                        <Text style={styles.pinBadgeText}>PIN設定済</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
               {selectedMemberId === member.id && (
@@ -231,6 +272,19 @@ const FamilyMemberLoginScreen: React.FC<FamilyMemberLoginScreenProps> = ({ navig
           </Text>
         </View>
       </ScrollView>
+
+      {/* PIN認証モーダル */}
+      {selectedMemberId && (
+        <PINInput
+          visible={showPINModal}
+          onClose={() => {
+            setShowPINModal(false);
+          }}
+          onConfirm={handlePINConfirm}
+          memberName={members.find(member => member.id === selectedMemberId)?.name || ''}
+          title="PIN認証"
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -308,6 +362,25 @@ const styles = StyleSheet.create({
   },
   memberRole: {
     fontSize: 14,
+    fontWeight: '500',
+  },
+  memberMetaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pinBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
+  },
+  pinBadgeText: {
+    fontSize: 11,
+    color: '#666',
     fontWeight: '500',
   },
   checkIcon: {
